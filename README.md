@@ -130,11 +130,4 @@ Le script va s'occuper de tout : installer les paquets système, copier les fich
 
     La première page que vous verrez est celle de l'inscription. Créez votre compte administrateur. Attention : une fois ce premier compte créé, la page d'inscription sera définitivement désactivée.
 
-    Permission Docker (Important) : Pour que le module Docker fonctionne, connectez-vous en SSH et ajoutez votre utilisateur principal (par exemple pi) au groupe docker :
-    Bash
-
-    sudo usermod -aG docker pi
-
-    Déconnectez-vous puis reconnectez-vous à votre session SSH pour que ce changement soit pris en compte.
-
 Votre NAS Panel est prêt !
