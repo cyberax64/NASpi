@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Gestion du Wi-Fi{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Gestion du Wi-Fi ({{ interface_name }})</h1>
+    <a href="{{ url_for('network.wifi', interface_name=interface_name) }}" class="btn btn-sm btn-secondary"><i class="bi bi-arrow-clockwise"></i> Rafraîchir</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-wifi me-2"></i>Mode Client</h5></div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between"><span>État</span><strong>{{ status.get('wpa_state', 'INACTIF') }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>SSID Connecté</span><strong>{{ status.get('ssid', 'Non connecté') }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Adresse IP</span><strong>{{ status.get('ip_address', 'N/A') }}</strong></li>
+            </ul>
+            <div class="card-body">
+                <h6>Réseaux Disponibles</h6>
+                <div class="list-group" style="max-height: 150px; overflow-y: auto;">
+                    {% for net in networks %}
+                    <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#connectModal" data-ssid="{{ net.ssid }}">{{ net.ssid }}</a>
+                    {% else %}
+                    <div class="list-group-item">Aucun réseau trouvé.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-broadcast-pin me-2"></i>Mode Point d'Accès (Hotspot)</h5></div>
+            <div class="card-body">
+                {% if hotspot_active %}
+                    <div class="alert alert-success">Le mode Point d'Accès est <strong>ACTIF</strong>.</div>
+                    <form method="POST" action="{{ url_for('network.disable_hotspot') }}">
+                        <input type="hidden" name="interface_name" value="{{ interface_name }}">
+                        <p>Pour vous reconnecter à un réseau Wi-Fi normal, désactivez le hotspot.</p>
+                        <button type="submit" class="btn btn-warning w-100">Désactiver et repasser en mode Client</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-secondary">Le mode Point d'Accès est <strong>INACTIF</strong>.</div>
+                    <form method="POST" action="{{ url_for('network.enable_hotspot') }}">
+                        <input type="hidden" name="interface_name" value="{{ interface_name }}">
+                        <div class="mb-3">
+                            <label for="ssid" class="form-label">Nom du réseau (SSID)</label>
+                            <input type="text" class="form-control" name="ssid" value="NAS_Pi_{{ interface_name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mot de passe (8 caractères min.)</label>
+                            <input type="password" class="form-control" name="password" required minlength="8">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Activer le Hotspot</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="connectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Se connecter au réseau <strong id="ssid-name"></strong></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="POST" action="{{ url_for('network.wifi_connect') }}">
+          <div class="modal-body">
+                <input type="hidden" name="ssid" id="modal-ssid-input">
+                <input type="hidden" name="interface_name" value="{{ interface_name }}">
+                <div class="mb-3"><label for="psk" class="form-label">Mot de passe (PSK)</label><input type="password" class="form-control" id="psk" name="psk" required></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-primary">Se connecter</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+    const connectModal = document.getElementById('connectModal');
+    if (connectModal) {
+        connectModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const ssid = button.getAttribute('data-ssid');
+            connectModal.querySelector('#ssid-name').textContent = ssid;
+            connectModal.querySelector('#modal-ssid-input').value = ssid;
+        });
+    }
+</script>
+{% endblock %}

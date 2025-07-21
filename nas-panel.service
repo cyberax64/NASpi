@@ -1,0 +1,13 @@
+[Unit]
+Description=NAS Panel Web Application
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/nas-panel
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Modifier le Partage {{ share.name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><h1 class="h3 mb-0">Modifier le partage [{{ share.name }}]</h1></div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('samba.save_share', share_name=share.name) }}">
+                    <div class="mb-3"><label for="share_path" class="form-label">Chemin du dossier</label><input type="text" class="form-control" id="share_path" name="share_path" value="{{ share.path }}" required></div>
+                    <div class="mb-3"><label for="guest_ok" class="form-label">Accès Invité (Public)</label><select class="form-select" id="guest_ok" name="guest_ok"><option value="no" {% if share['guest ok'] == 'no' %}selected{% endif %}>Non (Authentification Requise)</option><option value="yes" {% if share['guest ok'] == 'yes' %}selected{% endif %}>Oui</option></select></div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Permissions des Utilisateurs</label>
+                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <tbody>
+                                {% for user in all_users %}
+                                    <tr>
+                                        <td>{{ user }}</td>
+                                        <td><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="read_users" value="{{ user }}" id="read_{{ user }}" {% if user in share.read_list %}checked{% endif %}><label class="form-check-label" for="read_{{ user }}">Lecture</label></div></td>
+                                        <td><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="write_users" value="{{ user }}" id="write_{{ user }}" {% if user in share.write_list %}checked{% endif %}><label class="form-check-label" for="write_{{ user }}">Écriture</label></div></td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td class="text-muted small">Aucun utilisateur Samba créé.</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text">Si un utilisateur a l'écriture, il a aussi la lecture. Si rien n'est coché, personne n'aura accès (sauf si l'accès invité est activé).</div>
+                    </div>
+                    <hr>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('samba.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

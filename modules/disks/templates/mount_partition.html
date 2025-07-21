@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Monter la Partition{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0">Monter la Partition <code>/dev/{{ partition_name }}</code></h1>
+            </div>
+            <div class="card-body">
+                <p>Cette action va rendre les fichiers de cette partition accessibles sur le système.</p>
+                <p>Un point de montage sera créé dans le dossier <code>/mnt/</code>. Choisissez un nom simple et descriptif (ex: "videos", "data", "sauvegardes").</p>
+                <hr>
+                <form method="POST" action="{{ url_for('disks.mount_partition_execute', partition_name=partition_name) }}">
+                    <input type="hidden" name="uuid" value="{{ uuid }}">
+                    <div class="mb-3">
+                        <label for="mount_name" class="form-label">Nom du point de montage (dans /mnt/)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">/mnt/</span>
+                            <input type="text" class="form-control" id="mount_name" name="mount_name" required pattern="[a-zA-Z0-9_-]+">
+                        </div>
+                        <div class="form-text">
+                            Caractères autorisés : lettres, chiffres, tiret (-) et underscore (_).
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>La ligne suivante sera ajoutée à <code>/etc/fstab</code> :</strong>
+                        <pre class="mb-0 mt-2"><code>UUID={{ uuid }}  /mnt/<span id="preview_name">...</span>  ext4  defaults,auto,users,rw,nofail  0  0</code></pre>
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('disks.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-success">Monter et sauvegarder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const mountNameInput = document.getElementById('mount_name');
+    const previewName = document.getElementById('preview_name');
+    mountNameInput.addEventListener('input', () => {
+        previewName.textContent = mountNameInput.value || '...';
+    });
+</script>
+{% endblock %}

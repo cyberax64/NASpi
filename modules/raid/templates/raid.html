@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Gestion RAID{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Gestion des grappes RAID</h1>
+    <a href="{{ url_for('raid.create_raid') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Créer une grappe RAID
+    </a>
+</div>
+
+{% if raid_arrays %}
+    {% for name, array in raid_arrays.items() %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-device-hdd-fill me-2"></i> /dev/{{ name }}</h5>
+            <div>
+                <span class="badge text-bg-light me-2">{{ array.level }}</span>
+                {% if 'active' in array.state %}
+                    <span class="badge text-bg-success">Actif</span>
+                {% elif 'inactive' in array.state or 'broken' in array.state or 'erreur' in array.state %}
+                    <span class="badge text-bg-danger">{{ array.state|capitalize }}</span>
+                {% else %}
+                    <span class="badge text-bg-warning">{{ array.state }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="card-subtitle mb-2 text-muted">Périphériques membres</h6>
+                    {% if array.devices %}
+                    <ul class="list-group list-group-horizontal-lg flex-wrap">
+                        {% for device in array.devices %}
+                        <li class="list-group-item flex-fill text-center">{{ device }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-warning small">Aucun membre actif trouvé (grappe inactive ou cassée).</p>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('raid.destroy_raid_confirm', array_name=name) }}" class="btn btn-danger ms-3"><i class="bi bi-trash"></i> Détruire</a>
+            </div>
+            
+            {% if array.action %}
+            <h6 class="card-subtitle mb-2 mt-3 text-muted">Action en cours : {{ array.action|capitalize }}</h6>
+            <div class="progress" role="progressbar" style="height: 25px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: {{ array.progress }}%;">
+                    {{ array.progress }} %
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info text-center"><i class="bi bi-info-circle-fill me-2"></i>Aucune grappe RAID n'a été trouvée sur ce système.</div>
+{% endif %}
+{% endblock %}

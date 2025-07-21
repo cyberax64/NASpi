@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Détruire la Grappe RAID{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h1 class="h3 mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>Action Irréversible</h1>
+            </div>
+            <div class="card-body">
+                <p class="lead">Vous êtes sur le point de détruire la grappe RAID <strong>/dev/{{ array_name }}</strong>.</p>
+                <p>Cette action va :</p>
+                <ol>
+                    <li>Arrêter la grappe RAID.</li>
+                    <li>Nettoyer les informations RAID (superblocks) de <strong>tous les disques membres</strong>.</li>
+                </ol>
+                <p class="text-danger">Les disques membres redeviendront des partitions individuelles, mais les données sur la grappe seront perdues.</p>
+                <hr>
+                <p>Pour confirmer, veuillez retaper le nom de la grappe (<strong>{{ array_name }}</strong>).</p>
+                <form method="POST" action="{{ url_for('raid.destroy_raid_execute', array_name=array_name) }}">
+                    <div class="mb-3">
+                        <label for="array_name_confirm" class="form-label">Confirmation</label>
+                        <input type="text" class="form-control" id="array_name_confirm" name="array_name_confirm" autocomplete="off">
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('raid.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-danger" id="confirmButton" disabled>Je comprends, détruire la grappe</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const confirmInput = document.getElementById('array_name_confirm');
+    const confirmButton = document.getElementById('confirmButton');
+    const arrayName = "{{ array_name }}";
+    confirmInput.addEventListener('input', () => {
+        confirmButton.disabled = (confirmInput.value !== arrayName);
+    });
+</script>
+{% endblock %}

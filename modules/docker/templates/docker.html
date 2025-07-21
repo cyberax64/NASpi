@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Conteneurs Docker{% endblock %}
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('docker.index') }}">Conteneurs</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('docker.images') }}">Images</a></li>
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Conteneurs Docker</h1>
+    <a href="{{ url_for('docker.images') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-2"></i>Lancer un nouveau conteneur</a>
+</div>
+{% if containers %}
+<div class="row">
+    {% for container in containers %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-truncate" title="{{ container.name }}"><i class="bi bi-box me-2"></i>{{ container.name }}</h5>
+                {% if container.status == 'running' %}<span class="badge text-bg-success">En cours</span>
+                {% elif container.status == 'exited' %}<span class="badge text-bg-secondary">Arrêté</span>
+                {% else %}<span class="badge text-bg-warning">{{ container.status }}</span>{% endif %}
+            </div>
+            <div class="card-body">
+                <p class="card-text small text-muted">
+                    ID: {{ container.short_id }} <br>
+                    Image: {{ container.image_tags }}
+                </p>
+                <h6>Ports</h6>
+                <p class="card-text">
+                    {% if container.ports %}{% for internal_port, host_ports in container.ports.items() %}{% if host_ports %}{% for host_port in host_ports %}
+                        <span class="badge bg-primary">{{ host_port['HostIp'] }}:{{ host_port['HostPort'] }} -> {{ internal_port }}</span>
+                    {% endfor %}{% endif %}{% endfor %}{% else %}<span class="small text-muted">Aucun port publié.</span>{% endif %}
+                </p>
+            </div>
+            <div class="card-footer">
+                <div class="btn-group w-100">
+                    {% if container.status == 'running' %}
+                        <form method="POST" action="{{ url_for('docker.container_action', container_id=container.id, action='stop') }}"><button type="submit" class="btn btn-warning btn-sm">Arrêter</button></form>
+                        <form method="POST" action="{{ url_for('docker.container_action', container_id=container.id, action='restart') }}"><button type="submit" class="btn btn-secondary btn-sm">Redémarrer</button></form>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('docker.container_action', container_id=container.id, action='start') }}"><button type="submit" class="btn btn-success btn-sm">Démarrer</button></form>
+                    {% endif %}
+                    <a href="{{ url_for('docker.container_logs', container_id=container.id) }}" class="btn btn-info btn-sm">Logs</a>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmRemoveModal" data-container-id="{{ container.id }}" data-container-name="{{ container.name }}">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info text-center"><i class="bi bi-info-circle-fill me-2"></i>Aucun conteneur Docker trouvé.</div>
+{% endif %}
+<div class="modal fade" id="confirmRemoveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Confirmer la Suppression</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer le conteneur <strong id="containerNameToRemove"></strong> ?</p>
+        <p class="text-danger">Cette action est irréversible et supprimera le conteneur, mais pas son image.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form id="removeForm" method="POST" action=""><button type="submit" class="btn btn-danger">Supprimer</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    const confirmRemoveModal = document.getElementById('confirmRemoveModal');
+    if (confirmRemoveModal) {
+        confirmRemoveModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const containerId = button.getAttribute('data-container-id');
+            const containerName = button.getAttribute('data-container-name');
+            confirmRemoveModal.querySelector('#containerNameToRemove').textContent = containerName;
+            confirmRemoveModal.querySelector('#removeForm').action = `/docker/${containerId}/remove`;
+        });
+    }
+</script>
+{% endblock %}

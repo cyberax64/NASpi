@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="{{ session.get('theme', 'light') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NAS Panel{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+      body { min-height: 100vh; }
+      main { height: 100vh; max-height: 100vh; overflow-x: auto; overflow-y: hidden; }
+      .vr { opacity: .25;}
+    </style>
+</head>
+<body>
+<main class="d-flex flex-nowrap">
+    {% if current_user.is_authenticated %}
+    <div class="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style="width: 280px;">
+        <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+            <i class="bi bi-hdd-stack-fill me-2"></i>
+            <span class="fs-4">NAS Panel</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            <li class="nav-item">
+                <a href="{{ url_for('index') }}" class="nav-link text-white {% if request.endpoint == 'index' %}active{% endif %}">
+                    <i class="bi bi-speedometer2 me-2"></i> Tableau de bord
+                </a>
+            </li>
+            {% for module in modules %}
+            <li>
+                <a href="{{ url_for(module.endpoint) }}" class="nav-link text-white {% if request.blueprint == module.endpoint.split('.')[0] %}active{% endif %}">
+                    <i class="bi bi-{{ module.get('icon', 'box') }} me-2"></i> {{ module.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        <hr>
+        <div class="d-flex align-items-center">
+            <div class="dropdown flex-grow-1">
+                <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <strong>{{ current_user.username }}</strong>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark text-small shadow">
+                    <li><a class="dropdown-item" href="{{ url_for('logout') }}">Déconnexion</a></li>
+                </ul>
+            </div>
+            <a href="{{ url_for('toggle_theme') }}" class="btn btn-outline-light ms-2" title="Changer de thème">
+                {% if session.get('theme', 'light') == 'dark' %}
+                    <i class="bi bi-sun-fill"></i>
+                {% else %}
+                    <i class="bi bi-moon-stars-fill"></i>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="vr"></div>
+    {% endif %}
+    <div class="w-100 p-4 overflow-y-auto">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Lancer un Conteneur{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0">Lancer un nouveau conteneur</h1>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('docker.run_image_execute') }}">
+                    <div class="alert alert-info">Image utilisée : <strong>{{ image_name }}</strong></div>
+                    <input type="hidden" name="image_name" value="{{ image_name }}">
+
+                    <div class="mb-3">
+                        <label for="container_name" class="form-label">Nom du conteneur</label>
+                        <input type="text" class="form-control" name="container_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="restart_policy" class="form-label">Politique de redémarrage</label>
+                        <select class="form-select" name="restart_policy">
+                            <option value="unless-stopped" selected>Sauf si arrêté manuellement</option>
+                            <option value="always">Toujours</option>
+                            <option value="on-failure">En cas d'erreur</option>
+                            <option value="no">Jamais</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ports" class="form-label">Ports (un par ligne)</label>
+                        <textarea class="form-control font-monospace" name="ports" rows="3" placeholder="ex: 8080:80&#10;4430:443"></textarea>
+                        <div class="form-text">Format : <code>port_hote:port_conteneur</code></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="volumes" class="form-label">Volumes (un par ligne)</label>
+                        <textarea class="form-control font-monospace" name="volumes" rows="3" placeholder="ex: /mnt/data/config:/config&#10;/mnt/data/media:/media"></textarea>
+                        <div class="form-text">Format : <code>/chemin/sur/le/host:/chemin/dans/le/conteneur</code></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="environment" class="form-label">Variables d'environnement (une par ligne)</label>
+                        <textarea class="form-control font-monospace" name="environment" rows="3" placeholder="ex: PUID=1000&#10;PGID=1000"></textarea>
+                        <div class="form-text">Format : <code>VARIABLE=valeur</code></div>
+                    </div>
+
+                    <hr>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('docker.images') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-primary">Lancer le conteneur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

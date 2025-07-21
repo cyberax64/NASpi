@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Partages Samba{% endblock %}
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('samba.index') }}">Partages</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('samba.users') }}">Utilisateurs</a></li>
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Gestion des Partages</h1>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addShareCollapse"><i class="bi bi-plus-circle me-2"></i>Ajouter un Partage</button>
+</div>
+<div class="collapse" id="addShareCollapse">
+    <div class="card card-body mb-4">
+        <form method="POST" action="{{ url_for('samba.index') }}">
+            <div class="row">
+                <div class="col-md-6 mb-3"><label for="share_name" class="form-label">Nom du Partage</label><input type="text" class="form-control" id="share_name" name="share_name" required></div>
+                <div class="col-md-6 mb-3"><label for="share_path" class="form-label">Chemin du dossier</label><input type="text" class="form-control" id="share_path" name="share_path" placeholder="/mnt/data" required></div>
+            </div>
+            <div class="mb-3"><label for="guest_ok" class="form-label">Accès Invité (Public)</label><select class="form-select" id="guest_ok" name="guest_ok"><option value="no" selected>Non (Authentification Requise)</option><option value="yes">Oui</option></select></div>
+            
+            <div class="mb-3">
+                <label class="form-label">Permissions des Utilisateurs</label>
+                <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <tbody>
+                        {% for user in all_users %}
+                            <tr>
+                                <td>{{ user }}</td>
+                                <td><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="read_users" value="{{ user }}" id="read_{{ user }}"><label class="form-check-label" for="read_{{ user }}">Lecture</label></div></td>
+                                <td><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="write_users" value="{{ user }}" id="write_{{ user }}"><label class="form-check-label" for="write_{{ user }}">Écriture</label></div></td>
+                            </tr>
+                        {% else %}
+                            <tr><td class="text-muted small">Aucun utilisateur Samba créé.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-text">Si un utilisateur a l'écriture, il a aussi la lecture. Si rien n'est coché, personne n'aura accès (sauf si l'accès invité est activé).</div>
+            </div>
+            <button type="submit" class="btn btn-success">Valider le Partage</button>
+        </form>
+    </div>
+</div>
+<div class="row">
+    {% if shares %}
+        {% for share in shares %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="bi bi-folder2-open me-2"></i> [{{ share.name }}]</h5>
+                    <div class="btn-group">
+                        <a href="{{ url_for('samba.edit_share', share_name=share.name) }}" class="btn btn-secondary btn-sm" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
+                        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-share-name="{{ share.name }}" title="Supprimer"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="card-text text-muted">Chemin : <code>{{ share.path }}</code></p>
+                    <p class="card-text text-muted">Lecture : <code>{{ share['read list'] or 'aucun' }}</code></p>
+                    <p class="card-text text-muted">Écriture : <code>{{ share['write list'] or 'aucun' }}</code></p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12"><div class="alert alert-info text-center">Aucun partage Samba personnalisé n'a été trouvé.</div></div>
+    {% endif %}
+</div>
+{% endblock %}

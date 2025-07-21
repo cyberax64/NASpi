@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Images Docker{% endblock %}
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('docker.index') }}">Conteneurs</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('docker.images') }}">Images</a></li>
+</ul>
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Chercher une image sur le Docker Hub</h5></div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('docker.images') }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="search" placeholder="ex: plexinc/pms-docker, nextcloud, pihole" value="{{ search_term }}">
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Chercher</button>
+                    </div>
+                </form>
+            </div>
+            {% if search_term %}
+            <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                {% for result in search_results %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ result.name }}</strong><br>
+                        <small class="text-muted">{{ result.description|truncate(100) }}</small>
+                    </div>
+                    <form method="POST" action="{{ url_for('docker.pull_image') }}">
+                        <input type="hidden" name="image_name" value="{{ result.name }}">
+                        <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-download"></i> Télécharger</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">Images Locales</h5></div>
+			<div class="list-group list-group-flush" style="max-height: 500px; overflow-y: auto;">
+				{% for image in images %}
+				<div class="list-group-item">
+					<div class="d-flex w-100 justify-content-between">
+						<h6 class="mb-1 text-truncate" title="{{ image.tags[0] if image.tags else 'sans nom' }}">{{ image.tags[0] if image.tags else 'sans nom' }}</h6>
+						<div class="btn-group">
+							<a href="{{ url_for('docker.run_image_form', image_name=image.tags[0]) }}" class="btn btn-success btn-sm" title="Lancer un conteneur depuis cette image"><i class="bi bi-play-fill"></i></a>
+							<form method="POST" action="{{ url_for('docker.delete_image', image_id=image.id) }}" onsubmit="return confirm('Sûr de vouloir supprimer cette image ?');">
+								<button type="submit" class="btn btn-danger btn-sm" title="Supprimer l'image"><i class="bi bi-trash"></i></button>
+							</form>
+						</div>
+					</div>
+					<small class="text-muted">ID: {{ image.short_id }}</small>
+				</div>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

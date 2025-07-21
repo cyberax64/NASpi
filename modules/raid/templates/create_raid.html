@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Créer une Grappe RAID{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <form method="POST" action="{{ url_for('raid.create_raid_execute') }}" id="createRaidForm">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="h3 mb-0">Créer une nouvelle grappe RAID</h1>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Sélectionnez les partitions à inclure et le niveau de RAID souhaité.</p>
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                        <strong>ATTENTION :</strong> Toutes les données sur les partitions sélectionnées seront <strong>DÉFINITIVEMENT effacées</strong> lors de la création de la grappe.
+                    </div>
+                    <hr>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">1. Choisissez le niveau de RAID :</label>
+                        <select class="form-select" name="level" id="raidLevelSelect" required>
+                            <option value="raid0">RAID 0 (Stripping) - Performance, pas de redondance</option>
+                            <option value="raid1" selected>RAID 1 (Mirroring) - Redondance</option>
+                            <option value="raid5">RAID 5 (Parité distribuée) - Redondance et performance</option>
+                            <option value="raid6">RAID 6 (Double parité) - Haute redondance</option>
+                        </select>
+                        <div class="form-text" id="raidInfoText">Le RAID 1 requiert 2 partitions.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Sélectionnez les partitions membres :</label>
+                        <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            {% if not clean_candidates and not unclean_candidates %}
+                                <p class="text-muted">Aucune partition non montée trouvée.</p>
+                            {% else %}
+                                {% for device in clean_candidates %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="devices" value="{{ device.name }}" id="dev_{{ device.name }}">
+                                    <label class="form-check-label" for="dev_{{ device.name }}">
+                                        <strong>/dev/{{ device.name }}</strong> ({{ device.size }}) - <span class="text-success">Prêt</span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                                {% if unclean_candidates %}
+                                    <hr>
+                                    <p class="text-warning small">Les partitions suivantes contiennent d'anciennes données RAID et doivent être nettoyées avant utilisation :</p>
+                                    {% for device in unclean_candidates %}
+                                    <div class="d-flex justify-content-between align-items-center mb-1 p-2 bg-light border rounded">
+                                        <span class="text-warning">
+                                            <strong>/dev/{{ device.name }}</strong> ({{ device.size }})
+                                        </span>
+                                        <form method="POST" action="{{ url_for('raid.zero_superblock', partition_name=device.name) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-warning btn-sm">Nettoyer</button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="form-text">Seules les partitions non montées et non membres d'une grappe active sont affichées.</div>
+                    </div>
+                    <hr>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('raid.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-danger" id="submitButton">Créer la grappe RAID</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const select = document.getElementById('raidLevelSelect');
+        const infoText = document.getElementById('raidInfoText');
+        const form = document.getElementById('createRaidForm');
+        const submitButton = document.getElementById('submitButton');
+
+        const requirements = {
+            'raid0': { min: 2, text: 'Le RAID 0 requiert au moins 2 partitions.' },
+            'raid1': { min: 2, text: 'Le RAID 1 requiert 2 partitions.' },
+            'raid5': { min: 3, text: 'Le RAID 5 requiert au moins 3 partitions.' },
+            'raid6': { min: 4, text: 'Le RAID 6 requiert au moins 4 partitions.' }
+        };
+
+        function updateInfo() {
+            const selectedLevel = select.value;
+            infoText.textContent = requirements[selectedLevel].text;
+        }
+
+        select.addEventListener('change', updateInfo);
+
+        form.addEventListener('submit', function(event) {
+            const selectedLevel = select.value;
+            const minDisks = requirements[selectedLevel].min;
+            const checkedBoxes = document.querySelectorAll('input[name="devices"]:checked').length;
+            
+            if (checkedBoxes < minDisks) {
+                alert(`Erreur : Le ${selectedLevel.toUpperCase()} requiert au moins ${minDisks} partitions. Vous n'en avez sélectionné que ${checkedBoxes}.`);
+                event.preventDefault(); // Empêche l'envoi du formulaire
+                return;
+            }
+            
+            if (!confirm('Êtes-vous absolument sûr ? Toutes les données sur les partitions sélectionnées seront effacées !')) {
+                event.preventDefault();
+            }
+        });
+
+        updateInfo(); // Mettre à jour l'info au chargement
+    });
+</script>
+{% endblock %}

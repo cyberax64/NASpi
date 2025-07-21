@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Gestion du Réseau{% endblock %}
+{% block content %}
+<h1 class="h2 mb-4">État du Réseau</h1>
+<div class="row">
+    {% if interfaces %}
+        {% for name, data in interfaces.items() %}
+        <div class="col-xl-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        {% if 'eth' in name or 'en' in name %}<i class="bi bi-ethernet me-2"></i> Interface Ethernet ({{ name }}){% elif 'wlan' in name %}<i class="bi bi-wifi me-2"></i> Interface Wi-Fi ({{ name }}){% else %}<i class="bi bi-diagram-2 me-2"></i> Interface {{ name }}{% endif %}
+                    </h5>
+                    {% if data.stats and data.stats.isup %}<span class="badge text-bg-success">Connecté</span>{% else %}<span class="badge text-bg-danger">Déconnecté</span>{% endif %}
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between"><span>Adresse IPv4</span><strong>{{ data.ip_v4 }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Masque</span><strong>{{ data.netmask_v4 }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Adresse MAC</span><strong>{{ data.mac }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Vitesse</span><strong>{{ data.stats.speed if data.stats else 'N/A' }} Mbps</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Données envoyées</span><strong>{{ format_bytes(data.io.bytes_sent) if data.io else 'N/A' }}</strong></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Données reçues</span><strong>{{ format_bytes(data.io.bytes_recv) if data.io else 'N/A' }}</strong></li>
+                </ul>
+                <div class="card-footer">
+                    <div class="btn-group w-100">
+                        {% if data.is_bridge_slave %}
+                            <button class="btn btn-primary" disabled title="Cette interface est gérée par le pont vmbr0.">Configurer IP Statique</button>
+                        {% elif 'eth' in name or 'en' in name or 'vmbr' in name %}
+                            <a href="{{ url_for('network.static_ip_form', interface_name=name) }}" class="btn btn-primary">Configurer IP Statique</a>
+                        {% endif %}
+                        {% if 'wlan' in name %}
+                            <a href="{{ url_for('network.wifi', interface_name=name) }}" class="btn btn-info">Gérer le Wi-Fi</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12"><div class="alert alert-warning">Aucune interface réseau n'a pu être lue.</div></div>
+    {% endif %}
+</div>
+{% endblock %}

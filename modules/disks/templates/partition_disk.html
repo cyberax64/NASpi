@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Partitionner le Disque{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <form method="POST" action="{{ url_for('disks.partition_disk_execute', disk_name=disk_name) }}">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h1 class="h3 mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>Partitionnement du Disque /dev/{{ disk_name }}</h1>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Cette opération va <strong>effacer DÉFINITIVEMENT toutes les données</strong> sur ce disque pour créer une nouvelle table de partitions.</p>
+                    <p>Taille totale du disque : <strong>{{ "%.2f"|format(disk_size_gb) }} Go</strong>. Définissez les partitions que vous souhaitez créer et leur système de fichiers.</p>
+                    <hr>
+                    
+                    <div id="partitions-container">
+                        <div class="row align-items-end mb-3 partition-row">
+                            <div class="col-auto"><strong>#1</strong></div>
+                            <div class="col">
+                                <label class="form-label">Taille</label>
+                                <input type="number" class="form-control" name="part_size_1" required min="1">
+                            </div>
+                            <div class="col">
+                                <label class="form-label">Unité</label>
+                                <select class="form-select" name="part_unit_1">
+                                    <option value="GB" selected>Go</option>
+                                    <option value="MB">Mo</option>
+                                    <option value="TB">To</option>
+                                    <option value="%">%</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label">Système de fichiers</label>
+                                <select class="form-select" name="part_fstype_1">
+                                    <option value="ext4" selected>Linux (ext4)</option>
+                                    <option value="btrfs">Linux (btrfs)</option>
+                                    <option value="xfs">Linux (xfs)</option>
+                                    <option value="linux-swap">Linux Swap</option>
+                                    <option value="raid">Membre RAID Linux</option>
+                                </select>
+                            </div>
+                            <div class="col-auto" style="width: 40px;"></div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary" id="add-partition-btn"><i class="bi bi-plus-circle"></i> Ajouter une autre partition</button>
+                    
+                    <hr>
+                    <p>Pour confirmer, veuillez retaper le nom du disque (<strong>{{ disk_name }}</strong>).</p>
+                    <div class="mb-3">
+                        <label for="disk_name_confirm" class="form-label">Confirmation</label>
+                        <input type="text" class="form-control" id="disk_name_confirm" name="disk_name_confirm" autocomplete="off">
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('disks.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-danger" id="confirmButton" disabled>Je comprends les risques, partitionner et formater</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addBtn = document.getElementById('add-partition-btn');
+        const container = document.getElementById('partitions-container');
+        let partitionCount = 1;
+
+        addBtn.addEventListener('click', function() {
+            partitionCount++;
+            const newRow = document.createElement('div');
+            newRow.className = 'row align-items-end mb-3 partition-row';
+            newRow.innerHTML = `
+                <div class="col-auto"><strong>#${partitionCount}</strong></div>
+                <div class="col">
+                    <label class="form-label">Taille</label>
+                    <input type="number" class="form-control" name="part_size_${partitionCount}" required min="1">
+                </div>
+                <div class="col">
+                    <label class="form-label">Unité</label>
+                    <select class="form-select" name="part_unit_${partitionCount}">
+                        <option value="GB" selected>Go</option>
+                        <option value="MB">Mo</option>
+                        <option value="TB">To</option>
+                        <option value="%">%</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label class="form-label">Système de fichiers</label>
+                    <select class="form-select" name="part_fstype_${partitionCount}">
+                        <option value="ext4" selected>Linux (ext4)</option>
+                        <option value="btrfs">Linux (btrfs)</option>
+                        <option value="xfs">Linux (xfs)</option>
+                        <option value="linux-swap">Linux Swap</option>
+                        <option value="raid">Membre RAID Linux</option>
+                    </select>
+                </div>
+                <div class="col-auto" style="width: 40px;">
+                    <button type="button" class="btn btn-danger btn-sm remove-partition-btn">&times;</button>
+                </div>
+            `;
+            container.appendChild(newRow);
+        });
+
+        container.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('remove-partition-btn')) {
+                e.target.closest('.partition-row').remove();
+                
+                const rows = container.querySelectorAll('.partition-row');
+                partitionCount = rows.length;
+                rows.forEach((row, index) => {
+                    const num = index + 1;
+                    row.querySelector('strong').textContent = `#${num}`;
+                    row.querySelector('input[type="number"]').name = `part_size_${num}`;
+                    row.querySelector('select[name^="part_unit"]').name = `part_unit_${num}`;
+                    row.querySelector('select[name^="part_fstype"]').name = `part_fstype_${num}`;
+                });
+            }
+        });
+
+        const confirmInput = document.getElementById('disk_name_confirm');
+        const confirmButton = document.getElementById('confirmButton');
+        const diskName = "{{ disk_name }}";
+        confirmInput.addEventListener('input', () => {
+            confirmButton.disabled = (confirmInput.value !== diskName);
+        });
+    });
+</script>
+{% endblock %}

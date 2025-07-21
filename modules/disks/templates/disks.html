@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Disques{% endblock %}
+{% block content %}
+<h1 class="h2 mb-4">Gestion des Disques et Systèmes de Fichiers</h1>
+{% if disks %}
+    {% for disk in disks %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-hdd me-2"></i> /dev/{{ disk.name }}
+                {% if disk.model %}<span class="text-muted fw-normal ms-2">- {{ disk.model }}</span>{% endif %}
+            </h5>
+            <div>
+                {% if not disk.children and not disk.mountpoint %}
+                <a href="{{ url_for('disks.wipe_disk_confirm', disk_name=disk.name) }}" class="btn btn-dark btn-sm">
+                    <i class="bi bi-radioactive"></i> Effacer le Disque
+                </a>
+                {% endif %}
+                <span class="badge bg-secondary ms-2">{{ disk.size }}</span>
+            </div>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% if disk.children %}
+                {% for part in disk.children %}
+                <li class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1"><i class="bi bi-grip-vertical me-2 text-muted"></i>/dev/{{ part.name }}{% if part.label %}<span class="text-muted fw-normal"> - "{{ part.label }}"</span>{% endif %}</h6>
+                        <small>{{ part.size }}</small>
+                    </div>
+                    {% if part.mountpoint %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p class="mb-1">Monté sur : <code>{{ part.mountpoint }}</code> <span class="ms-2 badge rounded-pill text-bg-info">{{ part.fstype or 'inconnu' }}</span></p>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#confirmUnmountModal" data-part-name="{{ part.name }}" data-mount-point="{{ part.mountpoint }}">
+                                <i class="bi bi-eject-fill"></i> Démonter
+                            </button>
+                        </div>
+                        {% if part.usage %}
+                        <div class="progress mt-2" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ part.usage.percent }}%;">
+                                {{ "%.1f"|format(part.usage.used / (1024**3)) }} Go / {{ "%.1f"|format(part.usage.total / (1024**3)) }} Go
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        {% if part.is_active_raid_member %}
+                            <div class="alert alert-secondary small p-2 text-center mb-0">
+                                <i class="bi bi-hdd-rack-fill"></i> Membre d'une grappe RAID active. Gestion via le module RAID.
+                            </div>
+                        {% else %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <p class="text-muted fst-italic mb-1">Non monté - Système de fichiers : {{ part.fstype or 'Inconnu' }}</p>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('disks.delete_partition_confirm', partition_name=part.name) }}" class="btn btn-dark btn-sm"><i class="bi bi-trash"></i> Supprimer</a>
+                                    {% if part.fstype and 'raid' not in part.fstype %}
+                                    <a href="{{ url_for('disks.mount_partition_confirm', partition_name=part.name) }}" class="btn btn-success btn-sm"><i class="bi bi-plug-fill"></i> Monter</a>
+                                    {% elif not part.fstype %}
+                                    <a href="{{ url_for('disks.format_partition_confirm', partition_name=part.name) }}" class="btn btn-danger btn-sm"><i class="bi bi-eraser-fill"></i> Formater en ext4</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </li>
+                {% endfor %}
+                {% if disk.free_space and disk.free_space.size > 1024*1024 %}
+                <li class="list-group-item list-group-item-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-plus-circle-dotted me-2"></i>
+                            <strong>Espace non alloué : {{ "%.2f"|format(disk.free_space.size / (1024**3)) }} Go</strong>
+                        </div>
+                        <a href="{{ url_for('disks.add_partition_confirm', disk_name=disk.name) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-lg"></i> Créer une nouvelle partition
+                        </a>
+                    </div>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="list-group-item text-center p-3">
+                    <p class="text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ce disque est brut et ne contient aucune partition.</p>
+                    <a href="{{ url_for('disks.partition_disk', disk_name=disk.name) }}" class="btn btn-danger">
+                        <i class="bi bi-layout-split me-2"></i>Partitionner le Disque
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-warning">Aucun disque n'a pu être lu.</div>
+{% endif %}
+<div class="modal fade" id="confirmUnmountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Confirmer le Démontage</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir démonter la partition <strong id="partNameToUnmount"></strong> du point de montage <code><span id="mountPointToUnmount"></span></code> ?</p>
+        <p class="text-warning">L'entrée correspondante sera également supprimée de <code>/etc/fstab</code>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form id="unmountForm" method="POST" action=""><button type="submit" class="btn btn-warning">Démonter</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    const confirmUnmountModal = document.getElementById('confirmUnmountModal');
+    if (confirmUnmountModal) {
+        confirmUnmountModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const partName = button.getAttribute('data-part-name');
+            const mountPoint = button.getAttribute('data-mount-point');
+            confirmUnmountModal.querySelector('#partNameToUnmount').textContent = `/dev/${partName}`;
+            confirmUnmountModal.querySelector('#mountPointToUnmount').textContent = mountPoint;
+            confirmUnmountModal.querySelector('#unmountForm').action = `/disks/unmount/${partName}`;
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base_auth.html" %}
+
+{% block title %}Inscription - NAS Panel{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Créer un Compte</h2>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nom d'utilisateur</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">S'inscrire</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <small>Déjà un compte ? <a href="{{ url_for('login') }}">Connectez-vous</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

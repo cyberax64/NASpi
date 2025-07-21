@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Confirmer l'Effacement du Disque{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h1 class="h3 mb-0"><i class="bi bi-radioactive me-2"></i>DANGER : Effacement Complet</h1>
+            </div>
+            <div class="card-body">
+                <p class="lead">Vous êtes sur le point d'effacer <strong>COMPLÈTEMENT</strong> le disque <strong>/dev/{{ disk_name }}</strong>.</p>
+                <p class="text-danger fs-5">Cette action est **IRRÉVERSIBLE** et va détruire la table de partition et toutes les signatures de systèmes de fichiers. Le disque deviendra "brut".</p>
+                <hr>
+                <p>Pour confirmer cette action ultime, veuillez retaper le nom du disque (<strong>{{ disk_name }}</strong>) dans le champ ci-dessous.</p>
+                <form method="POST" action="{{ url_for('disks.wipe_disk_execute', disk_name=disk_name) }}">
+                    <div class="mb-3">
+                        <label for="disk_name_confirm" class="form-label">Confirmation</label>
+                        <input type="text" class="form-control" id="disk_name_confirm" name="disk_name_confirm" autocomplete="off">
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('disks.index') }}" class="btn btn-secondary">Annuler, j'ai peur !</a>
+                        <button type="submit" class="btn btn-dark" id="confirmButton" disabled>Je suis sûr de moi, effacer ce disque</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const confirmInput = document.getElementById('disk_name_confirm');
+    const confirmButton = document.getElementById('confirmButton');
+    const diskName = "{{ disk_name }}";
+    confirmInput.addEventListener('input', () => {
+        confirmButton.disabled = (confirmInput.value !== diskName);
+    });
+</script>
+{% endblock %}

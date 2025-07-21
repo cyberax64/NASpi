@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Utilisateurs Samba{% endblock %}
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('samba.index') }}">Partages</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active" href="{{ url_for('samba.users') }}">Utilisateurs</a>
+  </li>
+</ul>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Utilisateurs Samba Existants</div>
+            <div class="card-body">
+                {% if samba_users %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nom d'utilisateur</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in samba_users %}
+                        <tr>
+                            <td><i class="bi bi-person-fill me-2"></i><strong>{{ user }}</strong></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-user-name="{{ user }}">
+                                    <i class="bi bi-trash"></i> Supprimer
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-center">Aucun utilisateur Samba trouvé.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Ajouter un Utilisateur</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('samba.add_user') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nom d'utilisateur</label>
+                        <input type="text" class="form-control" id="username" name="username" required pattern="[a-z_][a-z0-9_-]*[$]?" title="Nom d'utilisateur Linux standard.">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-person-plus-fill"></i> Ajouter l'utilisateur
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmer la Suppression</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong id="userNameToDelete"></strong> ?</p>
+        <p class="text-danger">Cette action supprimera l'utilisateur de Samba ET du système Linux. C'est irréversible.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form id="deleteForm" method="POST" action="">
+          <button type="submit" class="btn btn-danger">Supprimer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    if (confirmDeleteModal) {
+        confirmDeleteModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const userName = button.getAttribute('data-user-name');
+            
+            confirmDeleteModal.querySelector('#userNameToDelete').textContent = userName;
+            confirmDeleteModal.querySelector('#deleteForm').action = `/samba/users/delete/${userName}`;
+        });
+    }
+</script>
+{% endblock %}

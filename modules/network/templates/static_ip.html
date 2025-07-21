@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Configurer l'IP Statique{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0">Configurer l'IP Statique pour {{ interface_name }}</h1>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('network.static_ip_save', interface_name=interface_name) }}">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Attention :</strong> Une mauvaise configuration peut vous faire perdre l'accès à votre appareil. Assurez-vous que l'adresse IP choisie est libre sur votre réseau.
+                    </div>
+                    <div class="mb-3">
+                        <label for="ip_address" class="form-label">Adresse IP Statique</label>
+                        <input type="text" class="form-control" id="ip_address" name="ip_address" value="{{ config.ip_address }}" placeholder="ex: 192.168.1.100/24" required>
+                        <div class="form-text">Inclure le masque de sous-réseau en notation CIDR (ex: /24).</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="routers" class="form-label">Passerelle (Routeur)</label>
+                        <input type="text" class="form-control" id="routers" name="routers" value="{{ config.routers }}" placeholder="ex: 192.168.1.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="domain_name_servers" class="form-label">Serveurs DNS (séparés par un espace)</label>
+                        <input type="text" class="form-control" id="domain_name_servers" name="domain_name_servers" value="{{ config.domain_name_servers }}" placeholder="ex: 8.8.8.8 1.1.1.1">
+                    </div>
+                    <hr>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('network.index') }}" class="btn btn-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-primary">Appliquer la Configuration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
