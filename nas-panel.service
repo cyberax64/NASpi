@@ -6,7 +6,7 @@ After=network.target
 User=root
 Group=root
 WorkingDirectory=/opt/nas-panel
-ExecStart=/usr/bin/python3 main.py
+ExecStart=/usr/bin/gunicorn --workers 1 --worker-class eventlet --bind 0.0.0.0:5001 "main:app"
 Restart=always
 
 [Install]
