@@ -1,11 +1,9 @@
-# Fichier : modules/ufw/views.py
-
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_required
 import subprocess
 import re
 
-display_name = "Pare-feu (UFW)"
+display_name = "Pare-feu"
 icon = "shield-shaded"
 bp = Blueprint('ufw', __name__, template_folder='templates')
 
@@ -14,31 +12,30 @@ def get_ufw_status():
     status = "inconnu"
     rules = []
     try:
-        # On utilise 'ufw status numbered' qui est facile à parser
         result = subprocess.run(['sudo', 'ufw', 'status', 'numbered'], capture_output=True, text=True)
-        
-        # Le code de retour est 0 même si le pare-feu est inactif
         output = result.stdout
         
-        status_match = re.search(r'Status: (\w+)', output)
-        if status_match:
+        if status_match := re.search(r'Status: (\w+)', output):
             status = status_match.group(1)
 
-        # Si le pare-feu est actif, on cherche les règles
         if status == 'active':
-            # La regex cherche les lignes qui commencent par [ X]
-            rule_lines = re.findall(r'(\[\s*\d+\].*)', output)
-            for line in rule_lines:
-                # On nettoie la ligne
-                cleaned_line = re.sub(r'\s+', ' ', line).strip()
-                parts = cleaned_line.split()
-                # Ex: [ 1] 22/tcp ALLOW IN Anywhere
-                rules.append({
-                    'num': parts[0].replace('[','').replace(']',''),
-                    'to': parts[1],
-                    'action': parts[2],
-                    'from': parts[4]
-                })
+            # Regex plus robuste pour parser les règles, même complexes
+            rule_pattern = re.compile(
+                r"\[\s*(\d+)\s*\]\s+"          # Numéro de règle, ex: [ 1] -> '1'
+                r"([^\s]+(?:\s+[^\s]+)?)\s+"   # 'To' (Port/Service), peut contenir un espace ex: 'Samba Full'
+                r"(?:\(v6\))?\s*"              # '(v6)' optionnel
+                r"(ALLOW|DENY|REJECT)\s+"      # Action
+                r"IN\s+"                       # Direction (on ne gère que 'IN' pour l'instant)
+                r"(.*)"                        # 'From' (le reste de la ligne)
+            )
+            for line in output.splitlines():
+                if match := rule_pattern.match(line.strip()):
+                    rules.append({
+                        'num': match.group(1),
+                        'to': match.group(2),
+                        'action': match.group(3),
+                        'from': match.group(4).strip()
+                    })
 
     except Exception as e:
         flash(f"Erreur lors de la lecture du statut UFW : {e}", "danger")
@@ -48,7 +45,7 @@ def get_ufw_status():
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-    if request.method == 'POST': # Gère l'ajout de règles
+    if request.method == 'POST':
         action = request.form.get('action')
         rule = request.form.get('rule')
         try:
