@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Géolocalisation (GPS){% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<h1 class="h2 mb-4">Tableau de Bord GPS</h1>
+
+<div class="row">
+    <div class="col-md-3 mb-4"><div class="card text-center"><div class="card-header">Latitude</div><div class="card-body"><h4 class="card-title" id="lat">--.--</h4></div></div></div>
+    <div class="col-md-3 mb-4"><div class="card text-center"><div class="card-header">Longitude</div><div class="card-body"><h4 class="card-title" id="lon">--.--</h4></div></div></div>
+    <div class="col-md-3 mb-4"><div class="card text-center"><div class="card-header">Vitesse (km/h)</div><div class="card-body"><h4 class="card-title" id="speed">--</h4></div></div></div>
+    <div class="col-md-3 mb-4"><div class="card text-center"><div class="card-header">Altitude (m)</div><div class="card-body"><h4 class="card-title" id="alt">--</h4></div></div></div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Position Actuelle</h5>
+        <span class="badge text-bg-info">Satellites : <span id="sats">0</span></span>
+    </div>
+    <div class="card-body p-0">
+        <div id="map" style="height: 55vh;"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialisation de la carte
+    const map = L.map('map').setView([43.6782997,1.3970192], 13); // Centré sur Belleville-en-Beaujolais par défaut
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let marker = L.marker([43.6782997,1.3970192]).addTo(map);
+    let firstUpdate = true;
+
+    // Fonction pour mettre à jour les données
+    function updateGpsData() {
+        fetch("{{ url_for('gps.gps_data') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('lat').textContent = data.error;
+                    return;
+                }
+
+                const lat = data.latitude.toFixed(6);
+                const lon = data.longitude.toFixed(6);
+                const speed = data.speed !== 'N/A' ? (data.speed * 3.6).toFixed(2) : 'N/A'; // m/s en km/h
+                const alt = data.altitude !== 'N/A' ? data.altitude.toFixed(2) : 'N/A';
+
+                document.getElementById('lat').textContent = lat;
+                document.getElementById('lon').textContent = lon;
+                document.getElementById('speed').textContent = speed;
+                document.getElementById('alt').textContent = alt;
+                document.getElementById('sats').textContent = data.satellites;
+
+                // Mettre à jour la carte
+                const newLatLng = [data.latitude, data.longitude];
+                marker.setLatLng(newLatLng);
+                
+                if (firstUpdate) {
+                    map.setView(newLatLng, 16); // Centre la carte sur la première position reçue
+                    firstUpdate = false;
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
+    }
+
+    // Mettre à jour toutes les 5 secondes
+    setInterval(updateGpsData, 5000);
+    updateGpsData(); // Premier appel immédiat
+});
+</script>
+{% endblock %}

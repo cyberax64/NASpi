@@ -9,32 +9,45 @@
     <style>
       body { min-height: 100vh; }
       main { height: 100vh; max-height: 100vh; overflow-x: auto; overflow-y: hidden; }
-      .vr { opacity: .25;}
+      /* Style pour les titres de catégorie dans le menu */
+      .nav-category-header {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #88929e; /* Couleur de texte grisé */
+        text-transform: uppercase;
+      }
     </style>
 </head>
 <body>
 <main class="d-flex flex-nowrap">
     {% if current_user.is_authenticated %}
     <div class="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style="width: 280px;">
-        <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-            <i class="bi bi-hdd-stack-fill me-2"></i>
+        <a href="{{ url_for('index') }}" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+            <i class="bi bi-hdd-stack-fill me-2 fs-4"></i>
             <span class="fs-4">NAS Panel</span>
         </a>
         <hr>
+        
         <ul class="nav nav-pills flex-column mb-auto">
-            <li class="nav-item">
-                <a href="{{ url_for('index') }}" class="nav-link text-white {% if request.endpoint == 'index' %}active{% endif %}">
+            <li>
+                <a href="{{ url_for('index') }}" class="nav-link text-white ps-3 {% if request.endpoint == 'index' %}active{% endif %}">
                     <i class="bi bi-speedometer2 me-2"></i> Tableau de bord
                 </a>
             </li>
-            {% for module in modules %}
-            <li>
-                <a href="{{ url_for(module.endpoint) }}" class="nav-link text-white {% if request.blueprint == module.endpoint.split('.')[0] %}active{% endif %}">
-                    <i class="bi bi-{{ module.get('icon', 'box') }} me-2"></i> {{ module.name }}
-                </a>
-            </li>
+            
+            {% for category, modules_in_category in categorized_modules.items() %}
+                <li class="nav-category-header mt-2">{{ category }}</li>
+                {% for module in modules_in_category %}
+                <li>
+                    <a href="{{ url_for(module.endpoint) }}" class="nav-link text-white ps-3 {% if request.blueprint == module.id %}active{% endif %}">
+                        <i class="bi bi-{{ module.get('icon', 'box') }} me-2"></i> {{ module.name }}
+                    </a>
+                </li>
+                {% endfor %}
             {% endfor %}
         </ul>
+
         <hr>
         <div class="d-flex align-items-center">
             <div class="dropdown flex-grow-1">
@@ -57,16 +70,14 @@
     </div>
     <div class="vr"></div>
     {% endif %}
+
     <div class="w-100 p-4 overflow-y-auto">
         {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
+          {% if messages %}{% for category, message in messages %}
               <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>
-            {% endfor %}
-          {% endif %}
+          {% endfor %}{% endif %}
         {% endwith %}
         {% block content %}{% endblock %}
     </div>
