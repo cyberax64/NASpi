@@ -4,6 +4,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request, ses
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_socketio import SocketIO
 from models import db, User, StatsHistory
+import psutil
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
@@ -68,7 +69,35 @@ def toggle_theme():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user)
+    # --- NOUVELLE LOGIQUE POUR LE TABLEAU DE BORD ---
+    # Stats rapides
+    cpu_percent = psutil.cpu_percent()
+    ram_percent = psutil.virtual_memory().percent
+    
+    # Trouver le plus grand disque de stockage (hors partition système)
+    storage_info = None
+    max_size = 0
+    try:
+        partitions = psutil.disk_partitions()
+        for p in partitions:
+            if p.mountpoint and p.mountpoint.startswith('/mnt/'):
+                usage = psutil.disk_usage(p.mountpoint)
+                if usage.total > max_size:
+                    max_size = usage.total
+                    storage_info = {
+                        'mountpoint': p.mountpoint,
+                        'total': usage.total / (1024**3),
+                        'used': usage.used / (1024**3),
+                        'percent': usage.percent
+                    }
+    except Exception:
+        pass # Pas grave si ça échoue
+
+    return render_template('index.html', 
+                           user=current_user, 
+                           cpu=cpu_percent, 
+                           ram=ram_percent,
+                           storage=storage_info)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
