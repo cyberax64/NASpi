@@ -1,0 +1,22 @@
+# Fichiers de cache et bytecode Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Fichiers de base de données
+database.db
+*.sqlite3
+*.db
+
+# Fichiers de log
+*.log
+
+# Fichiers d'environnement virtuel
+venv/
+env/
+.env
+
+# Fichiers de configuration IDE
+.vscode/
+.idea/
