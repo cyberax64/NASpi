@@ -1,9 +1,75 @@
 {% extends "base.html" %}
-
 {% block title %}Tableau de Bord{% endblock %}
 
 {% block content %}
-    <h1>Bienvenue, {{ user.username }} !</h1>
-    <p>Ceci est le tableau de bord de votre NAS personnel.</p>
-    <p>La phase 1 est terminée. Prochaine étape : le chargement dynamique des modules !</p>
+<div class="alert alert-primary">
+    <h4 class="alert-heading">Bienvenue, {{ user.username }} !</h4>
+    <p>Ceci est le tableau de bord principal de votre NAS Panel.</p>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cpu-fill me-2"></i>Utilisation CPU</h5>
+                <p class="display-4">{{ cpu }} %</p>
+                <div class="progress" role="progressbar" style="height: 10px;">
+                    <div class="progress-bar" style="width: {{ cpu }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-memory me-2"></i>Utilisation RAM</h5>
+                <p class="display-4">{{ ram }} %</p>
+                <div class="progress" role="progressbar" style="height: 10px;">
+                    <div class="progress-bar bg-success" style="width: {{ ram }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-hdd-stack me-2"></i>Stockage Principal</h5>
+                {% if storage %}
+                    <p class="display-4">{{ storage.percent }} %</p>
+                    <div class="progress" role="progressbar" style="height: 10px;">
+                        <div class="progress-bar bg-info" style="width: {{ storage.percent }}%;"></div>
+                    </div>
+                    <small class="text-muted">{{ "%.2f"|format(storage.used) }} Go / {{ "%.2f"|format(storage.total) }} Go sur {{ storage.mountpoint }}</small>
+                {% else %}
+                    <p class="text-muted">Aucun disque de stockage monté dans /mnt/ trouvé.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Accès Rapide aux Modules</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for module in modules %}
+                    <div class="col-md-4 col-6 mb-3">
+                        <a href="{{ url_for(module.endpoint) }}" class="btn btn-outline-secondary w-100 p-3">
+                            <i class="bi bi-{{ module.icon }} fs-2"></i>
+                            <h6 class="mt-2 mb-0">{{ module.name }}</h6>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
