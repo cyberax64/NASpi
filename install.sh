@@ -18,7 +18,7 @@ fi
 # === Étape 1: Installation des dépendances système ===
 echo "${GREEN}--> Étape 1/5 : Installation des dépendances système (apt)...${RESET}"
 apt-get update
-apt-get install -y samba mdadm docker.io hostapd dnsmasq git rsync
+apt-get install -y samba mdadm docker.io hostapd dnsmasq git rsync ufw
 
 
 # === Étape 2: Copie des fichiers de l'application ===
