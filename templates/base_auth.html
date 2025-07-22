@@ -11,6 +11,16 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
+        
+        /* --- AJOUT DU FOND D'ÉCRAN --- */
+        background-image: url('/static/background.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      /* Ajoute un léger assombrissement pour que le formulaire ressorte mieux */
+      .card {
+        background-color: rgba(var(--bs-body-bg-rgb), 0.9) !important;
       }
     </style>
 </head>
