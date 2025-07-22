@@ -2,7 +2,7 @@
 {% block title %}Gestion des Partages Samba{% endblock %}
 {% block content %}
 <ul class="nav nav-tabs mb-4">
-  <li class="nav-item"><a class="nav-link active" href="{{ url_for('samba.index') }}">Partages</a></li>
+  <li class="nav-item"><a class="nav-link active" aria-current="page" href="{{ url_for('samba.index') }}">Partages</a></li>
   <li class="nav-item"><a class="nav-link" href="{{ url_for('samba.users') }}">Utilisateurs</a></li>
 </ul>
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -17,11 +17,10 @@
                 <div class="col-md-6 mb-3"><label for="share_path" class="form-label">Chemin du dossier</label><input type="text" class="form-control" id="share_path" name="share_path" placeholder="/mnt/data" required></div>
             </div>
             <div class="mb-3"><label for="guest_ok" class="form-label">Accès Invité (Public)</label><select class="form-select" id="guest_ok" name="guest_ok"><option value="no" selected>Non (Authentification Requise)</option><option value="yes">Oui</option></select></div>
-            
             <div class="mb-3">
                 <label class="form-label">Permissions des Utilisateurs</label>
                 <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
-                    <table class="table table-sm">
+                    <table class="table table-sm mb-0">
                         <tbody>
                         {% for user in all_users %}
                             <tr>
@@ -50,13 +49,13 @@
                     <h5 class="card-title mb-0"><i class="bi bi-folder2-open me-2"></i> [{{ share.name }}]</h5>
                     <div class="btn-group">
                         <a href="{{ url_for('samba.edit_share', share_name=share.name) }}" class="btn btn-secondary btn-sm" title="Modifier"><i class="bi bi-pencil-fill"></i></a>
-                        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-share-name="{{ share.name }}" title="Supprimer"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-danger btn-sm js-delete-share-btn" data-share-name="{{ share.name }}" title="Supprimer"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
                 <div class="card-body">
                     <p class="card-text text-muted">Chemin : <code>{{ share.path }}</code></p>
-                    <p class="card-text text-muted">Lecture : <code>{{ share['read list'] or 'aucun' }}</code></p>
-                    <p class="card-text text-muted">Écriture : <code>{{ share['write list'] or 'aucun' }}</code></p>
+                    <p class="card-text text-muted small">Lecture : <code>{{ share['read list'] or 'aucun' }}</code></p>
+                    <p class="card-text text-muted small">Écriture : <code>{{ share['write list'] or 'aucun' }}</code></p>
                 </div>
             </div>
         </div>
@@ -65,4 +64,40 @@
         <div class="col-12"><div class="alert alert-info text-center">Aucun partage Samba personnalisé n'a été trouvé.</div></div>
     {% endif %}
 </div>
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Confirmer la Suppression</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">Êtes-vous sûr de vouloir supprimer le partage <strong id="shareNameToDelete"></strong> ?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form id="deleteForm" method="POST" action=""><button type="submit" class="btn btn-danger">Supprimer</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
+    // On crée l'instance de la modale une seule fois
+    const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+
+    // On écoute les clics sur tous les boutons de suppression
+    document.querySelectorAll('.js-delete-share-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const shareName = event.currentTarget.getAttribute('data-share-name');
+            
+            // On met à jour le contenu de la modale
+            const modalBodyStrong = confirmDeleteModalEl.querySelector('#shareNameToDelete');
+            const deleteForm = confirmDeleteModalEl.querySelector('#deleteForm');
+            
+            if(modalBodyStrong) modalBodyStrong.textContent = `[${shareName}]`;
+            if(deleteForm) deleteForm.action = `/samba/delete/${shareName}`;
+            
+            // On affiche la modale manuellement
+            confirmDeleteModal.show();
+        });
+    });
+});
+</script>
 {% endblock %}
