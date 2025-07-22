@@ -2,15 +2,15 @@ import os
 import importlib
 from flask import Flask, render_template, redirect, url_for, flash, request, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-
-# On importe nos modèles et l'objet db depuis le nouveau fichier
+from flask_socketio import SocketIO
 from models import db, User, StatsHistory
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
-
-# On initialise la base de données avec notre application
 db.init_app(app)
+
+# NOUVEAU : Initialisation de SocketIO
+socketio = SocketIO(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -113,5 +113,5 @@ if __name__ == '__main__':
     # On ajoute ce bloc pour créer la BDD automatiquement
     with app.app_context():
         db.create_all()
-    
-    app.run(debug=True, host='0.0.0.0', port=5001)
+
+    socketio.run(app, host='0.0.0.0', port=5001)
