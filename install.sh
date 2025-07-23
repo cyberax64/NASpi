@@ -16,13 +16,13 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # === Étape 1: Installation des dépendances système ===
-echo "${GREEN}--> Étape 1/5 : Installation des dépendances système (apt)...${RESET}"
+echo "${GREEN}--> Étape 1/6 : Installation des dépendances système (apt)...${RESET}"
 apt-get update
 apt-get install -y samba mdadm docker.io hostapd dnsmasq git rsync ufw
 
 
 # === Étape 2: Copie des fichiers de l'application ===
-echo "${GREEN}--> Étape 2/5 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
+echo "${GREEN}--> Étape 2/6 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
 # Récupère le répertoire où se trouve le script
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DEST_DIR="/opt/nas-panel"
@@ -32,17 +32,26 @@ mkdir -p "$DEST_DIR"
 rsync -av --exclude 'install.sh' "$SCRIPT_DIR/" "$DEST_DIR/"
 
 # === Étape 3: Installation des dépendances Python ===
-echo "${GREEN}--> Étape 3/5 : Installation des dépendances Python (pip)...${RESET}"
+echo "${GREEN}--> Étape 3/6 : Installation des dépendances Python (pip)...${RESET}"
 apt-get install -y python3-pip python3-psutil python3-flask python3-flask-sqlalchemy python3-flask-login python3-docker python3-flask-socketio python3-gunicorn gunicorn python3-eventlet
 
 # === Étape 4: Configuration du Cron pour le collecteur de stats ===
-echo "${GREEN}--> Étape 4/5 : Configuration de la tâche planifiée (cron)...${RESET}"
+echo "${GREEN}--> Étape 4/6 : Configuration de la tâche planifiée (cron)...${RESET}"
 CRON_JOB="* * * * * /usr/bin/python3 $DEST_DIR/collector.py >> $DEST_DIR/collector.log 2>&1"
 # Ajoute la tâche seulement si elle n'existe pas déjà
 (crontab -l 2>/dev/null | grep -Fq "$CRON_JOB") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
 
-# === Étape 5: Création et activation du service systemd ===
-echo "${GREEN}--> Étape 5/5 : Création du service de l'application...${RESET}"
+# === Étape 5: Configuration du Pare-feu (UFW) ===
+echo "${GREEN}--> Étape 5/6 : Configuration du pare-feu (UFW)...${RESET}"
+# Ajoute la règle pour notre application
+ufw allow 5001/tcp comment 'NAS Panel Web UI'
+# Ajoute la règle pour le SSH pour ne pas se bloquer l'accès
+ufw allow ssh
+# Active le pare-feu sans demander de confirmation
+ufw --force enable
+
+# === Étape 6: Création et activation du service systemd ===
+echo "${GREEN}--> Étape 6/6 : Création du service de l'application...${RESET}"
 cp "$DEST_DIR/nas-panel.service" "/etc/systemd/system/nas-panel.service"
 systemctl daemon-reload
 systemctl enable nas-panel.service
