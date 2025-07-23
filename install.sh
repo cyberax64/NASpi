@@ -1,4 +1,4 @@
-#!/bin/bash
+ho #!/bin/bash
 
 # Script d'installation pour le NAS Panel
 
@@ -47,6 +47,8 @@ cp "$DEST_DIR/nas-panel.service" "/etc/systemd/system/nas-panel.service"
 systemctl daemon-reload
 systemctl enable nas-panel.service
 systemctl start nas-panel.service
+
+echo "usb_max_current_enable=1" >> /boot/firmware/config.txt
 
 echo "${GREEN}--- Installation terminée ! ---${RESET}"
 echo "L'application NAS Panel est maintenant installée dans ${YELLOW}$DEST_DIR${RESET}"
