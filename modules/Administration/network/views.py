@@ -5,7 +5,6 @@ import socket
 import subprocess
 import re
 import os
-import configparser
 import time
 
 display_name = "Réseau"
@@ -51,17 +50,23 @@ def index():
 def static_ip_form(interface_name):
     current_config = {'Address': '', 'Gateway': '', 'DNS': ''}
     config_file = f"/etc/systemd/network/10-{interface_name}.network"
+    
     try:
         if os.path.exists(config_file):
-            config = configparser.ConfigParser()
-            config.read(config_file)
-            if 'Network' in config:
-                net_section = config['Network']
-                current_config['Address'] = net_section.get('Address', '')
-                current_config['Gateway'] = net_section.get('Gateway', '')
-                current_config['DNS'] = net_section.get('DNS', '')
+            with open(config_file, 'r') as f:
+                dns_servers = []
+                for line in f:
+                    line = line.strip()
+                    if line.lower().startswith('address='):
+                        current_config['Address'] = line.split('=', 1)[1]
+                    elif line.lower().startswith('gateway='):
+                        current_config['Gateway'] = line.split('=', 1)[1]
+                    elif line.lower().startswith('dns='):
+                        dns_servers.append(line.split('=', 1)[1])
+                current_config['DNS'] = ' '.join(dns_servers)
     except Exception as e:
         flash(f"Impossible de lire le fichier de configuration existant : {e}", "warning")
+
     return render_template('static_ip.html', interface_name=interface_name, config=current_config)
 
 @bp.route('/static_ip/<interface_name>/save', methods=['POST'])
@@ -70,11 +75,14 @@ def static_ip_save(interface_name):
     ip = request.form.get('ip_address')
     router = request.form.get('routers')
     dns = request.form.get('domain_name_servers', '8.8.8.8 1.1.1.1')
+    
     config_file_path = f"/etc/systemd/network/10-{interface_name}.network"
+    
     config_content = f"[Match]\nName={interface_name}\n\n[Network]\nAddress={ip}\nGateway={router}\n"
     if dns:
         for dns_server in dns.split():
             config_content += f"DNS={dns_server}\n"
+            
     try:
         write_command = f"echo '{config_content}' | sudo tee {config_file_path}"
         subprocess.run(write_command, shell=True, check=True)
@@ -82,6 +90,7 @@ def static_ip_save(interface_name):
         flash(f"Configuration IP statique pour {interface_name} appliquée.", "success")
     except Exception as e:
         flash(f"Erreur lors de la sauvegarde de la configuration : {e}", "danger")
+
     return redirect(url_for('network.index'))
 
 @bp.route('/wifi/<interface_name>')
