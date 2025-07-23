@@ -22,12 +22,14 @@ apt-get install -y samba mdadm docker.io hostapd dnsmasq git rsync ufw gunicorn
 apt remove --purge -y exim4 avahi-daemon libavahi-core7 libdaemon0 libnss-mdns rpicam-apps-lite
 systemctl stop dnsmasq
 systemctl disable dnsmasq
-#SAMBA_CONF="/etc/samba/smb.conf"
-#PRIMARY_INTERFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -n1)
-#sed -i '/^ *interfaces/d' "$SAMBA_CONF"
-#sed -i '/^ *bind interfaces only/d' "$SAMBA_CONF
-#sed -i "/\[global\]/a \interfaces = 0.0.0.0\nbind interfaces only = yes" "$SAMBA_CONF"
-#systemctl restart smbd nmbd
+SAMBA_CONF="/etc/samba/smb.conf"
+PRIMARY_INTERFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -n1)
+sed -i '/^ *interfaces/d' "$SAMBA_CONF"
+sed -i '/^ *bind interfaces only/d' "$SAMBA_CONF
+sed -i "/\[global\]/a \interfaces = 0.0.0.0" "$SAMBA_CONF"
+echo "console=serial0,115200 console=tty1 root=PARTUUID=35890969-02 rootfstype=ext4 fsck.repair=yes rootwait cfg80211.ieee80211_regdom=FR ipv6.disable=1" > /boot/firmware/cmdline.txt
+echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
 
 # === Étape 2: Copie des fichiers de l'application ===
 echo "${GREEN}--> Étape 2/6 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
@@ -73,4 +75,4 @@ echo "${GREEN}--- Installation terminée ! ---${RESET}"
 echo "L'application NAS Panel est maintenant installée dans ${YELLOW}$DEST_DIR${RESET}"
 echo "Le service est démarré. Vous pouvez vérifier son statut avec : ${YELLOW}systemctl status nas-panel${RESET}"
 echo "Pour voir les logs de l'application, utilisez : ${YELLOW}journalctl -u nas-panel -f${RESET}"
-
+reboot
