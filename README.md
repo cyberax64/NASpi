@@ -57,7 +57,7 @@ L'installation est entièrement automatisée.
 
 1.  Clonez le dépôt :
     ```bash
-    git clone [https://github.com/cyberax64/NASpi.git](https://github.com/cyberax64/NASpi.git)
+    git clone https://github.com/cyberax64/NASpi.git
     ```
 2.  Naviguez dans le dossier :
     ```bash
