@@ -45,8 +45,10 @@ CRON_JOB="* * * * * /usr/bin/python3 $DEST_DIR/collector.py >> $DEST_DIR/collect
 echo "${GREEN}--> Étape 5/6 : Configuration du pare-feu (UFW)...${RESET}"
 # Ajoute la règle pour notre application
 ufw allow 5001/tcp comment 'NAS Panel Web UI'
-# Ajoute la règle pour le SSH pour ne pas se bloquer l'accès
+# Ajoute la règle pour le SSH
 ufw allow ssh
+# Ajoute la règle pour le Samba
+ufw allow samba
 # Active le pare-feu sans demander de confirmation
 ufw --force enable
 
