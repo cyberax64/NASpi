@@ -22,12 +22,12 @@ apt-get install -y samba mdadm docker.io hostapd dnsmasq git rsync ufw gunicorn
 apt remove --purge -y exim4 avahi-daemon libavahi-core7 libdaemon0 libnss-mdns rpicam-apps-lite
 systemctl stop dnsmasq
 systemctl disable dnsmasq
-SAMBA_CONF="/etc/samba/smb.conf"
-PRIMARY_INTERFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -n1)
-sed -i '/^ *interfaces/d' "$SAMBA_CONF"
-sed -i '/^ *bind interfaces only/d' "$SAMBA_CONF
-sed -i "/\[global\]/a \interfaces = lo $PRIMARY_INTERFACE\nbind interfaces only = yes" "$SAMBA_CONF"
-systemctl restart smbd nmbd
+#SAMBA_CONF="/etc/samba/smb.conf"
+#PRIMARY_INTERFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -n1)
+#sed -i '/^ *interfaces/d' "$SAMBA_CONF"
+#sed -i '/^ *bind interfaces only/d' "$SAMBA_CONF
+#sed -i "/\[global\]/a \interfaces = 0.0.0.0\nbind interfaces only = yes" "$SAMBA_CONF"
+#systemctl restart smbd nmbd
 
 # === Étape 2: Copie des fichiers de l'application ===
 echo "${GREEN}--> Étape 2/6 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
