@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Mise à Jour du Panel{% endblock %}
+{% block content %}
+<h1 class="h2 mb-4">Mise à Jour du Panel via GitHub</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Statut de la Synchronisation</h5>
+            </div>
+            <div class="card-body">
+                {% if status.update_available %}
+                    <div class="alert alert-warning">
+                        <h4 class="alert-heading"><i class="bi bi-cloud-arrow-down-fill me-2"></i>Une mise à jour est disponible !</h4>
+                        <p>Votre version locale est différente de celle sur GitHub.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('updater.run_update') }}" onsubmit="return confirm('L\'application va être mise à jour et redémarrée. Vous serez déconnecté. Continuer ?');">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">Installer la Mise à Jour</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-success">
+                        <h4 class="alert-heading"><i class="bi bi-check-circle-fill me-2"></i>À jour</h4>
+                        <p>Votre NAS Panel est à la dernière version disponible sur GitHub.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-muted small d-flex justify-content-between">
+                <span>Commit Local : <code>{{ status.local_commit }}</code></span>
+                <span>Commit Distant : <code>{{ status.remote_commit }}</code></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
