@@ -18,7 +18,7 @@ fi
 # === Étape 1: Installation des dépendances système ===
 echo "${GREEN}--> Étape 1/6 : Installation des dépendances système (apt)...${RESET}"
 apt-get update
-apt-get install -y samba mdadm docker.io git rsync ufw gunicorn 
+apt-get install -y samba mdadm docker.io git rsync ufw gunicorn openresolv wireguard-tools
 apt remove --purge -y exim4 avahi-daemon libavahi-core7 libdaemon0 libnss-mdns rpicam-apps-lite
 systemctl stop dnsmasq
 systemctl disable dnsmasq
