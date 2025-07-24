@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Mises à Jour{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Mises à Jour du Système</h1>
+    <a href="{{ url_for('updates.index') }}" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Rechercher à nouveau</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Paquets à mettre à jour ({{ packages|length }})</h5>
+            {% if packages %}
+            <button id="start-upgrade-btn" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#upgradeModal">
+                <i class="bi bi-cloud-arrow-up-fill me-2"></i>Installer toutes les mises à jour
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if packages %}
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Paquet</th>
+                    <th>Version Actuelle</th>
+                    <th>Nouvelle Version</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pkg in packages %}
+                <tr>
+                    <td><strong>{{ pkg.name }}</strong></td>
+                    <td>{{ pkg.current_version }}</td>
+                    <td class="text-success">{{ pkg.new_version }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-center text-muted">Aucune mise à jour disponible.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="upgradeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Mise à jour en cours...</h5>
+      </div>
+      <div class="modal-body bg-dark text-light font-monospace">
+        <pre><code id="upgrade-log">En attente du démarrage du processus...</code></pre>
+      </div>
+      <div class="modal-footer">
+        <a href="{{ url_for('updates.index') }}" class="btn btn-secondary d-none" id="close-btn">Terminé</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const startBtn = document.getElementById('start-upgrade-btn');
+    const logContainer = document.getElementById('upgrade-log');
+    const closeBtn = document.getElementById('close-btn');
+    let logStarted = false;
+
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/updates');
+
+            socket.on('connect', function() {
+                console.log('Socket connected, running upgrade.');
+                logContainer.textContent = 'Connexion établie. Lancement de la mise à jour...\n';
+                socket.emit('run_upgrade');
+            });
+
+            socket.on('upgrade_log', function(msg) {
+                if (!logStarted) {
+                    logContainer.textContent = ''; // Vider le message d'attente
+                    logStarted = true;
+                }
+                logContainer.textContent += msg.log;
+                // Auto-scroll vers le bas
+                logContainer.parentElement.scrollTop = logContainer.parentElement.scrollHeight;
+                
+                if (msg.log.includes('--- TERMINÉE AVEC SUCCÈS ---') || msg.log.includes('--- ERREUR ---')) {
+                    closeBtn.classList.remove('d-none'); // Affiche le bouton "Terminé"
+                }
+            });
+
+            socket.on('disconnect', function() {
+                console.log('Socket disconnected.');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
