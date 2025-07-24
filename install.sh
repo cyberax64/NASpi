@@ -42,7 +42,7 @@ rsync -av --exclude 'install.sh' "$SCRIPT_DIR/" "$DEST_DIR/"
 
 # === Étape 3: Installation des dépendances Python ===
 echo "${GREEN}--> Étape 3/6 : Installation des dépendances Python (pip)...${RESET}"
-apt-get install -y python3-psutil python3-flask python3-flask-sqlalchemy python3-flask-login python3-docker python3-flask-socketio python3-gunicorn python3-eventlet
+apt-get install -y python3-psutil python3-flask python3-flask-sqlalchemy python3-flask-login python3-docker python3-flask-socketio python3-gunicorn python3-eventlet python3-gps
 
 # === Étape 4: Configuration du Cron pour le collecteur de stats ===
 echo "${GREEN}--> Étape 4/6 : Configuration de la tâche planifiée (cron)...${RESET}"
