@@ -6,7 +6,7 @@ from main import socketio
 import subprocess
 import re
 
-display_name = "Mises à Jour"
+display_name = "Mises à Jour (apt)"
 icon = "cloud-arrow-up-fill"
 bp = Blueprint('updates', __name__, template_folder='templates')
 
