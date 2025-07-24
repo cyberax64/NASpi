@@ -1,14 +1,1 @@
-{
-    "gps": {
-        "type": "samba",
-        "destination": "/mnt/ssd/gps",
-        "status": "En cours...",
-        "is_running": true,
-        "source": {
-            "server": "192.168.1.3",
-            "share": "elodie/gps",
-            "username": "elodie",
-            "password": "Mkasholsen31@"
-        }
-    }
-}
+{}
