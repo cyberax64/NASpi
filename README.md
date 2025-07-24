@@ -27,6 +27,7 @@ Ce panneau de contrôle est organisé par catégories pour une gestion intuitive
 * **Partages Samba :** Gestion des partages réseau, des utilisateurs Samba et des permissions de lecture/écriture par utilisateur.
 * **Conteneurs Docker :** Gestion complète du cycle de vie des conteneurs (démarrer, arrêter, etc.), consultation des logs, recherche et téléchargement d'images, et lancement de nouveaux conteneurs avec une configuration détaillée (ports, volumes, variables).
 * **VPN WireGuard :** Gestion du VPN WireGuard.
+* **Sauvegarde :** Gestion des sauvegarde local ou distante ((par samba).
 
 ### 🔐 Administration
 * **Pare-feu (UFW) :** Activation/désactivation et gestion simplifiée des règles du pare-feu.
