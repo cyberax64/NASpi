@@ -5,10 +5,13 @@ import socket
 import subprocess
 import re
 import os
+import time
 
 display_name = "Réseau"
 icon = "router-fill"
 bp = Blueprint('network', __name__, template_folder='templates')
+
+HOTSPOT_PROFILE_NAME = "naspi-hotspot"
 
 def format_bytes(byte_count):
     if byte_count is None: return "N/A"
@@ -47,8 +50,6 @@ def index():
 @bp.route('/static_ip/<interface_name>')
 @login_required
 def static_ip_form(interface_name):
-    # Cette partie gère systemd-networkd. Si Proxmox gère le réseau,
-    # la configuration manuelle se fait ailleurs, mais on garde la fonction pour le moment.
     current_config = {'Address': '', 'Gateway': '', 'DNS': ''}
     config_file = f"/etc/systemd/network/10-{interface_name}.network"
     try:
@@ -84,11 +85,6 @@ def static_ip_save(interface_name):
     except Exception as e:
         flash(f"Erreur lors de la sauvegarde de la configuration : {e}", "danger")
     return redirect(url_for('network.index'))
-
-
-# --- Routes pour la gestion du Wi-Fi (entièrement adaptées pour nmcli) ---
-
-HOTSPOT_PROFILE_NAME = "mon-hotspot-pi"
 
 @bp.route('/wifi/<interface_name>')
 @login_required
@@ -152,7 +148,7 @@ def enable_hotspot():
         subprocess.run(['sudo', 'nmcli', 'con', 'down', HOTSPOT_PROFILE_NAME], capture_output=True)
         subprocess.run(['sudo', 'nmcli', 'con', 'delete', HOTSPOT_PROFILE_NAME], capture_output=True)
 
-        cmd_create = ['sudo', 'nmcli', 'con', 'add', 'type', 'wifi', 'ifname', interface, 'con-name', HOTSPOT_PROFILE_NAME, 'autoconnect', 'no', 'ssid', ssid]
+        cmd_create = ['sudo', 'nmcli', 'con', 'add', 'type', 'wifi', 'ifname', interface, 'con-name', HOTSPOT_PROFILE_NAME, 'autoconnect', 'yes', 'ssid', ssid]
         subprocess.run(cmd_create, check=True, capture_output=True, text=True)
         
         cmd_modify = [
@@ -166,8 +162,12 @@ def enable_hotspot():
         ]
         subprocess.run(cmd_modify, check=True, capture_output=True, text=True)
 
+        # CORRECTION : On donne une haute priorité à la connexion du hotspot
+        cmd_priority = ['sudo', 'nmcli', 'con', 'modify', HOTSPOT_PROFILE_NAME, 'connection.autoconnect-priority', '100']
+        subprocess.run(cmd_priority, check=True, capture_output=True, text=True)
+
         subprocess.run(['sudo', 'nmcli', 'con', 'up', HOTSPOT_PROFILE_NAME], check=True, capture_output=True, text=True)
-        flash(f"Hotspot '{ssid}' activé avec succès ! 📶", "success")
+        flash(f"Hotspot '{ssid}' activé et configuré pour démarrer automatiquement.", "success")
 
     except subprocess.CalledProcessError as e:
         error_message = e.stderr or e.stdout
@@ -183,7 +183,7 @@ def disable_hotspot():
         subprocess.run(['sudo', 'nmcli', 'con', 'down', HOTSPOT_PROFILE_NAME], capture_output=True)
         subprocess.run(['sudo', 'nmcli', 'con', 'delete', HOTSPOT_PROFILE_NAME], capture_output=True)
         subprocess.run(['sudo', 'nmcli', 'radio', 'wifi', 'on'], check=True)
-        flash("Mode Point d'Accès désactivé. Wi-Fi prêt à se connecter.", "success")
+        flash("Mode Point d'Accès désactivé. Le Wi-Fi va se reconnecter à un réseau connu.", "success")
     except subprocess.CalledProcessError as e:
         error_message = e.stderr or e.stdout
         flash(f"Erreur lors de la désactivation du hotspot : {error_message}", "danger")
