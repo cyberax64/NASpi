@@ -5,7 +5,6 @@ import socket
 import subprocess
 import re
 import os
-import time
 
 display_name = "Réseau"
 icon = "router-fill"
@@ -48,25 +47,22 @@ def index():
 @bp.route('/static_ip/<interface_name>')
 @login_required
 def static_ip_form(interface_name):
+    # Cette partie gère systemd-networkd. Si Proxmox gère le réseau,
+    # la configuration manuelle se fait ailleurs, mais on garde la fonction pour le moment.
     current_config = {'Address': '', 'Gateway': '', 'DNS': ''}
     config_file = f"/etc/systemd/network/10-{interface_name}.network"
-    
     try:
         if os.path.exists(config_file):
             with open(config_file, 'r') as f:
                 dns_servers = []
                 for line in f:
                     line = line.strip()
-                    if line.lower().startswith('address='):
-                        current_config['Address'] = line.split('=', 1)[1]
-                    elif line.lower().startswith('gateway='):
-                        current_config['Gateway'] = line.split('=', 1)[1]
-                    elif line.lower().startswith('dns='):
-                        dns_servers.append(line.split('=', 1)[1])
+                    if line.lower().startswith('address='): current_config['Address'] = line.split('=', 1)[1]
+                    elif line.lower().startswith('gateway='): current_config['Gateway'] = line.split('=', 1)[1]
+                    elif line.lower().startswith('dns='): dns_servers.append(line.split('=', 1)[1])
                 current_config['DNS'] = ' '.join(dns_servers)
     except Exception as e:
         flash(f"Impossible de lire le fichier de configuration existant : {e}", "warning")
-
     return render_template('static_ip.html', interface_name=interface_name, config=current_config)
 
 @bp.route('/static_ip/<interface_name>/save', methods=['POST'])
@@ -75,14 +71,11 @@ def static_ip_save(interface_name):
     ip = request.form.get('ip_address')
     router = request.form.get('routers')
     dns = request.form.get('domain_name_servers', '8.8.8.8 1.1.1.1')
-    
     config_file_path = f"/etc/systemd/network/10-{interface_name}.network"
-    
     config_content = f"[Match]\nName={interface_name}\n\n[Network]\nAddress={ip}\nGateway={router}\n"
     if dns:
         for dns_server in dns.split():
             config_content += f"DNS={dns_server}\n"
-            
     try:
         write_command = f"echo '{config_content}' | sudo tee {config_file_path}"
         subprocess.run(write_command, shell=True, check=True)
@@ -90,8 +83,12 @@ def static_ip_save(interface_name):
         flash(f"Configuration IP statique pour {interface_name} appliquée.", "success")
     except Exception as e:
         flash(f"Erreur lors de la sauvegarde de la configuration : {e}", "danger")
-
     return redirect(url_for('network.index'))
+
+
+# --- Routes pour la gestion du Wi-Fi (entièrement adaptées pour nmcli) ---
+
+HOTSPOT_PROFILE_NAME = "mon-hotspot-pi"
 
 @bp.route('/wifi/<interface_name>')
 @login_required
@@ -100,27 +97,28 @@ def wifi(interface_name):
     networks = []
     hotspot_active = False
     try:
-        hostapd_status = subprocess.run(['systemctl', 'is-active', 'hostapd.service'], capture_output=True, text=True)
-        if hostapd_status.stdout.strip() == 'active':
+        result = subprocess.run(['sudo', 'nmcli', 'con', 'show', '--active'], capture_output=True, text=True, check=True)
+        if HOTSPOT_PROFILE_NAME in result.stdout:
             hotspot_active = True
-        
-        status_result = subprocess.run(['sudo', 'wpa_cli', '-i', interface_name, 'status'], capture_output=True, text=True)
-        if status_result.returncode == 0:
-            for line in status_result.stdout.splitlines():
-                if '=' in line: key, value = line.split('=', 1); status[key] = value
-        
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface_name, 'scan'], check=True, capture_output=True)
-        time.sleep(4)
-        scan_result = subprocess.run(['sudo', 'wpa_cli', '-i', interface_name, 'scan_results'], capture_output=True, text=True, check=True)
-        
-        lines = scan_result.stdout.splitlines()
-        if len(lines) > 1:
-            for line in lines[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 5:
-                    networks.append({'ssid': parts[4], 'signal': parts[2], 'flags': parts[3]})
+
+        status_result = subprocess.run(['sudo', 'nmcli', 'dev', 'show', interface_name], capture_output=True, text=True)
+        for line in status_result.stdout.splitlines():
+            if 'GENERAL.CONNECTION' in line:
+                status['ssid'] = line.split(':')[1].strip() or 'Non connecté'
+            if 'IP4.ADDRESS[1]' in line:
+                status['ip_address'] = line.split(':')[1].strip()
+
+        if not hotspot_active:
+            list_result = subprocess.run(['sudo', 'nmcli', '--fields', 'SSID,SIGNAL,SECURITY', 'dev', 'wifi', 'list', 'ifname', interface_name, '--rescan', 'yes'], capture_output=True, text=True)
+            lines = list_result.stdout.strip().split('\n')
+            if len(lines) > 1:
+                for line in lines[1:]:
+                    parts = re.split(r'\s{2,}', line.strip())
+                    if len(parts) >= 1:
+                        networks.append({'ssid': parts[0], 'signal': parts[1] if len(parts)>1 else 'N/A', 'flags': parts[2] if len(parts)>2 else 'N/A'})
+
     except Exception as e:
-        flash(f"Erreur de communication avec l'interface Wi-Fi : {e}", "warning")
+        flash(f"Erreur de communication avec NetworkManager : {e}", "danger")
 
     return render_template('wifi.html', status=status, networks=networks, interface_name=interface_name, hotspot_active=hotspot_active)
 
@@ -131,84 +129,62 @@ def wifi_connect():
     psk = request.form.get('psk')
     interface = request.form.get('interface_name')
     try:
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'remove_network', 'all'], capture_output=True, text=True)
-        add_result = subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'add_network'], capture_output=True, text=True, check=True)
-        network_id = add_result.stdout.strip()
-        
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'set_network', network_id, 'ssid', f'"{ssid}"'], check=True)
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'set_network', network_id, 'psk', f'"{psk}"'], check=True)
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'enable_network', network_id], check=True)
-        subprocess.run(['sudo', 'wpa_cli', '-i', interface, 'save_config'], check=True)
-        
-        flash(f"Connexion au réseau Wi-Fi '{ssid}' en cours...", "success")
-    except Exception as e:
-        flash(f"Erreur lors de la connexion au Wi-Fi : {e}", "danger")
+        cmd = ['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid, 'password', psk, 'ifname', interface]
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        flash(f"Connexion au réseau Wi-Fi '{ssid}' réussie !", "success")
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr or e.stdout
+        flash(f"Erreur lors de la connexion au Wi-Fi : {error_message}", "danger")
     return redirect(url_for('network.wifi', interface_name=interface))
 
 @bp.route('/wifi/hotspot/enable', methods=['POST'])
 @login_required
 def enable_hotspot():
-    interface = request.form.get('interface_name')
+    interface = request.form.get('interface_name', 'wlan0')
     ssid = request.form.get('ssid')
     password = request.form.get('password')
-    
-    if len(password) < 8:
-        flash("Le mot de passe doit faire au moins 8 caractères.", "danger")
+
+    if not ssid or len(password) < 8:
+        flash("Le SSID est requis et le mot de passe doit faire au moins 8 caractères.", "danger")
         return redirect(url_for('network.wifi', interface_name=interface))
 
-    dnsmasq_conf = f"interface={interface}\ndhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h"
-    hostapd_conf = f"interface={interface}\ndriver=nl80211\nssid={ssid}\nhw_mode=g\nchannel=7\nwmm_enabled=0\nmacaddr_acl=0\nauth_algs=1\nignore_broadcast_ssid=0\nwpa=2\nwpa_passphrase={password}\nwpa_key_mgmt=WPA-PSK\nwpa_pairwise=TKIP\nrsn_pairwise=CCMP"
-    networkd_conf = f"[Match]\nName={interface}\n\n[Network]\nAddress=192.168.4.1/24\nDHCPServer=no"
-    
     try:
-        subprocess.run(['sudo', 'systemctl', 'stop', 'wpa_supplicant.service'], check=True)
+        subprocess.run(['sudo', 'nmcli', 'con', 'down', HOTSPOT_PROFILE_NAME], capture_output=True)
+        subprocess.run(['sudo', 'nmcli', 'con', 'delete', HOTSPOT_PROFILE_NAME], capture_output=True)
+
+        cmd_create = ['sudo', 'nmcli', 'con', 'add', 'type', 'wifi', 'ifname', interface, 'con-name', HOTSPOT_PROFILE_NAME, 'autoconnect', 'no', 'ssid', ssid]
+        subprocess.run(cmd_create, check=True, capture_output=True, text=True)
         
-        write_cmd = f"echo '{networkd_conf}' | sudo tee /etc/systemd/network/30-{interface}-hotspot.network"
-        subprocess.run(write_cmd, shell=True, check=True)
-        
-        write_cmd = f"echo '{dnsmasq_conf}' | sudo tee /etc/dnsmasq.conf"
-        subprocess.run(write_cmd, shell=True, check=True)
-        
-        write_cmd = f"echo '{hostapd_conf}' | sudo tee /etc/hostapd/hostapd.conf"
-        subprocess.run(write_cmd, shell=True, check=True)
-        
-        subprocess.run("echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/99-ip_forward.conf", shell=True, check=True)
-        subprocess.run("sudo sysctl -p", shell=True, check=True)
-        subprocess.run("sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE", shell=True, check=True)
-        
-        subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-networkd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'unmask', 'hostapd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'enable', 'hostapd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'start', 'hostapd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'start', 'dnsmasq.service'], check=True)
-        
-        flash(f"Mode Point d'Accès activé avec le nom de réseau '{ssid}'.", "success")
-    except Exception as e:
-        flash(f"Erreur lors de l'activation du hotspot : {e}", "danger")
-        
+        cmd_modify = [
+            'sudo', 'nmcli', 'con', 'modify', HOTSPOT_PROFILE_NAME,
+            '802-11-wireless.mode', 'ap',
+            '802-11-wireless.band', 'bg',
+            'wifi-sec.key-mgmt', 'wpa-psk',
+            'wifi-sec.psk', password,
+            'ipv4.method', 'shared',
+            'ipv4.addresses', '192.168.4.1/24'
+        ]
+        subprocess.run(cmd_modify, check=True, capture_output=True, text=True)
+
+        subprocess.run(['sudo', 'nmcli', 'con', 'up', HOTSPOT_PROFILE_NAME], check=True, capture_output=True, text=True)
+        flash(f"Hotspot '{ssid}' activé avec succès ! 📶", "success")
+
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr or e.stdout
+        flash(f"Erreur lors de l'activation du hotspot : {error_message}", "danger")
+    
     return redirect(url_for('network.wifi', interface_name=interface))
 
 @bp.route('/wifi/hotspot/disable', methods=['POST'])
 @login_required
 def disable_hotspot():
-    interface = request.form.get('interface_name')
+    interface = request.form.get('interface_name', 'wlan0')
     try:
-        subprocess.run(['sudo', 'systemctl', 'stop', 'hostapd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'stop', 'dnsmasq.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'disable', 'hostapd.service'], check=True)
-        
-        if os.path.exists(f"/etc/systemd/network/30-{interface}-hotspot.network"):
-            subprocess.run(['sudo', 'rm', f"/etc/systemd/network/30-{interface}-hotspot.network"], check=True)
-        
-        if os.path.exists("/etc/sysctl.d/99-ip_forward.conf"):
-            subprocess.run("sudo rm /etc/sysctl.d/99-ip_forward.conf", shell=True, check=True)
-        subprocess.run("sudo iptables -t nat -F", shell=True, check=True)
-
-        subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-networkd.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'start', 'wpa_supplicant.service'], check=True)
-        
-        flash("Mode Point d'Accès désactivé. Retour au mode Client.", "success")
-    except Exception as e:
-        flash(f"Erreur lors de la désactivation du hotspot : {e}", "danger")
-        
+        subprocess.run(['sudo', 'nmcli', 'con', 'down', HOTSPOT_PROFILE_NAME], capture_output=True)
+        subprocess.run(['sudo', 'nmcli', 'con', 'delete', HOTSPOT_PROFILE_NAME], capture_output=True)
+        subprocess.run(['sudo', 'nmcli', 'radio', 'wifi', 'on'], check=True)
+        flash("Mode Point d'Accès désactivé. Wi-Fi prêt à se connecter.", "success")
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr or e.stdout
+        flash(f"Erreur lors de la désactivation du hotspot : {error_message}", "danger")
     return redirect(url_for('network.wifi', interface_name=interface))
