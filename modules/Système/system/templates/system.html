@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Informations Système{% endblock %}
+{% block content %}
+<h1 class="h2 mb-4">Tableau de Bord du Système</h1>
+
+<div class="row">
+    <div class="col-xl-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Utilisation CPU (%) - Dernières 24h</h5>
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Utilisation RAM (%) - Dernières 24h</h5>
+                <canvas id="ramChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-pc-display-horizontal me-2"></i>Système</h5></div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between"><span>Nom d'hôte</span><strong>{{ system.hostname }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>OS</span><strong>{{ system.os }} {{ system.os_release }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Noyau</span><strong>{{ system.os_version.split(' ')[0] }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>En ligne depuis</span><strong>{{ system.uptime_days }}j {{ system.uptime_hours }}h {{ system.uptime_minutes }}m</strong></li>
+            </ul>
+            <div class="card-header border-top"><h5 class="mb-0"><i class="bi bi-router-fill me-2"></i>Réseau</h5></div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between"><span>Adresse IP</span><strong>{{ network.ip }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Données envoyées</span><strong>{{ network.bytes_sent }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Données reçues</span><strong>{{ network.bytes_recv }}</strong></li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-xl-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-cpu-fill me-2"></i>Processeur</h5></div>
+            <div class="card-body"><p class="card-title text-center"><strong>{{ cpu.model }}</strong></p><div class="progress mb-3" role="progressbar" style="height: 25px;"><div class="progress-bar" style="width: {{ cpu.usage }}%;">{{ cpu.usage }} %</div></div></div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between"><span>Cœurs</span><strong>{{ cpu.physical_cores }} physiques, {{ cpu.total_cores }} logiques</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Fréquence</span><strong>{{ cpu.freq_current }}</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Charge moyenne</span><strong>{{ cpu.load_avg }}</strong></li>
+            </ul>
+            <div class="card-header border-top"><h5 class="mb-0"><i class="bi bi-memory me-2"></i>Mémoire</h5></div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><span>RAM : {{ memory.ram_used }} / {{ memory.ram_total }}</span><div class="progress mt-1" role="progressbar" style="height: 20px;"><div class="progress-bar bg-success" style="width: {{ memory.ram_percent }}%;">{{ memory.ram_percent }} %</div></div></li>
+                <li class="list-group-item"><span>Swap : {{ memory.swap_used }} / {{ memory.swap_total }}</span><div class="progress mt-1" role="progressbar" style="height: 20px;"><div class="progress-bar bg-info" style="width: {{ memory.swap_percent }}%;">{{ memory.swap_percent }} %</div></div></li>
+            </ul>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-hdd-stack me-2"></i>Systèmes de Fichiers Montés</h5></div>
+            <div class="card-body">
+                {% if drives %}
+                    {% for drive in drives %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between"><span><strong>{{ drive.mountpoint }}</strong> ({{ drive.device }})</span><span>{{ drive.used }} / {{ drive.total }}</span></div>
+                        <div class="progress mt-1" role="progressbar" style="height: 20px;"><div class="progress-bar" style="width: {{ drive.usage.percent }}%;">{{ drive.usage.percent }} %</div></div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">Aucune partition n'a pu être lue.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-terminal-fill me-2"></i>Derniers Journaux Système</h5></div>
+            <div class="card-body bg-dark text-light font-monospace small" style="max-height: 400px; overflow-y: auto;">
+                <pre><code>{{ logs }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const createChart = (canvasId, label, data, color) => {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        // Appliquer le thème clair/sombre aux graphiques
+        const gridColor = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const ticksColor = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? '#adb5bd' : '#495057';
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: label,
+                    data: data.values,
+                    borderColor: color,
+                    backgroundColor: color + '33',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: gridColor },
+                        ticks: { color: ticksColor }
+                    },
+                    x: {
+                        ticks: { maxTicksLimit: 12, color: ticksColor },
+                        grid: { color: gridColor }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    };
+    fetch("{{ url_for('system.stats_data') }}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.labels.length > 0) {
+                createChart('cpuChart', 'CPU Usage', { labels: data.labels, values: data.cpu }, '#0d6efd');
+                createChart('ramChart', 'RAM Usage', { labels: data.labels, values: data.ram }, '#198754');
+            }
+        });
+});
+</script>
+{% endblock %}
