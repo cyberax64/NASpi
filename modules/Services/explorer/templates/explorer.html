@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Explorateur de Fichiers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 mb-0">Explorateur de Fichiers</h1>
+    {% if current_path %}
+    <div>
+        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#mkdirCollapse">
+            <i class="bi bi-folder-plus me-2"></i>Nouveau dossier
+        </button>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#uploadCollapse">
+            <i class="bi bi-upload me-2"></i>Téléverser
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+{% if current_path %}
+<div class="collapse" id="uploadCollapse">
+    <div class="card card-body mb-4">
+        <form method="POST" action="{{ url_for('explorer.upload') }}" enctype="multipart/form-data">
+            <input type="hidden" name="path" value="{{ current_path }}">
+            <div class="mb-3">
+                <label for="files" class="form-label">Sélectionnez un ou plusieurs fichiers à téléverser dans <code>/mnt/{{ current_path }}</code></label>
+                <input class="form-control" type="file" name="files" id="files" multiple>
+            </div>
+            <button type="submit" class="btn btn-success">Lancer le téléversement</button>
+        </form>
+    </div>
+</div>
+<div class="collapse" id="mkdirCollapse">
+    <div class="card card-body mb-4">
+        <form method="POST" action="{{ url_for('explorer.mkdir') }}">
+            <input type="hidden" name="path" value="{{ current_path }}">
+            <div class="input-group">
+                <input type="text" class="form-control" name="folder_name" placeholder="Nom du nouveau dossier" required>
+                <button type="submit" class="btn btn-success">Créer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('explorer.index') }}">/mnt</a></li>
+                {% for part in current_path.split('/') if part %}
+                    <li class="breadcrumb-item active" aria-current="page">{{ part }}</li>
+                {% endfor %}
+            </ol>
+        </nav>
+    </div>
+    <div class="list-group list-group-flush">
+        {% if parent_path is not none %}
+        <a href="{{ url_for('explorer.index', subpath=parent_path) }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-arrow-90deg-up me-2"></i> ... (Dossier Parent)
+        </a>
+        {% endif %}
+
+        {% for item in contents %}
+            {% set full_item_path = current_path + '/' + item.name if current_path else item.name %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                {% if item.is_dir %}
+                    <a href="{{ url_for('explorer.index', subpath=full_item_path) }}" class="text-decoration-none text-body flex-grow-1">
+                        <i class="bi bi-folder-fill me-2 text-primary"></i><strong>{{ item.name }}</strong>
+                    </a>
+                {% else %}
+                    <span class="flex-grow-1"><i class="bi bi-file-earmark-text me-2"></i>{{ item.name }}</span>
+                {% endif %}
+                
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary me-3">{{ item.size|filesizeformat }}</span>
+                    <small class="text-muted me-3">{{ item.modified }}</small>
+                    {% if current_path %}
+                    <div class="btn-group">
+                        <a href="{{ url_for('explorer.download', filepath=full_item_path) }}" class="btn btn-sm btn-outline-success" title="Télécharger"><i class="bi bi-download"></i></a>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="renameItem('{{ item.name }}')" title="Renommer"><i class="bi bi-pencil-fill"></i></button>
+                        <form method="POST" action="{{ url_for('explorer.delete') }}" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer \'{{ item.name }}\' ?');">
+                            <input type="hidden" name="path" value="{{ current_path }}">
+                            <input type="hidden" name="item_name" value="{{ item.name }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if current_path %}
+<form method="POST" action="{{ url_for('explorer.rename') }}" id="renameForm" class="d-none">
+    <input type="hidden" name="path" value="{{ current_path }}">
+    <input type="hidden" name="old_name" id="oldNameInput">
+    <input type="hidden" name="new_name" id="newNameInput">
+</form>
+
+<script>
+function renameItem(oldName) {
+    const newName = prompt("Entrez le nouveau nom pour :", oldName);
+    if (newName && newName !== oldName) {
+        document.getElementById('oldNameInput').value = oldName;
+        document.getElementById('newNameInput').value = newName;
+        document.getElementById('renameForm').submit();
+    }
+}
+</script>
+{% endif %}
+
+{% endblock %}
