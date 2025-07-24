@@ -20,6 +20,8 @@ Ce panneau de contrôle est organisé par catégories pour une gestion intuitive
 ### 💾 Stockage
 * **Gestion des Disques :** Visualisation des disques, partitions et grappes RAID. Outils complets pour partitionner (multiples partitions, choix du FS), formater, monter/démonter, ajouter/supprimer des partitions, et effacer des disques.
 * **Gestion RAID :** Création et destruction de grappes RAID logiciel (0, 1, 5, 6). Visualisation de l'état des grappes (actives, en synchronisation, cassées).
+* **Mise à jour :** Gestion des mise à jour de debian (apt).
+* **Mise à jour panel:** Gestion des mise à jour du panel.
 
 ### 🌐 Services
 * **Partages Samba :** Gestion des partages réseau, des utilisateurs Samba et des permissions de lecture/écriture par utilisateur.
