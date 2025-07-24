@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Gestion VPN (WireGuard){% endblock %}
+{% block content %}
+<h1 class="h2 mb-4">Gestion du VPN Client WireGuard</h1>
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Statut Actuel</h5></div>
+            {% if status %}
+                {% for name, data in status.items() %}
+                <div class="card-body">
+                    <h4 class="text-success"><i class="bi bi-shield-check me-2"></i>Connecté</h4>
+                    <ul class="list-unstyled">
+                        <li><strong>Interface:</strong> <code>{{ data.name }}</code></li>
+                        <li><strong>Peer:</strong> <code>{{ data.peer }}</code></li>
+                        <li><strong>Transfert:</strong> {{ data.transfer }}</li>
+                    </ul>
+                    <form method="POST" action="{{ url_for('wireguard.wg_down', conf_name=data.name) }}" class="d-grid">
+                        <button type="submit" class="btn btn-warning">Désactiver</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card-body">
+                    <h4 class="text-secondary"><i class="bi bi-shield-slash me-2"></i>Déconnecté</h4>
+                    <p class="text-muted">Aucune interface WireGuard n'est active.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-7 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Configurations Disponibles</h5></div>
+            <div class="list-group list-group-flush">
+                {% for conf in configs %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        <strong>{{ conf.name }}.conf</strong>
+                        {% if conf.original_name != 'N/A' %}
+                        <br><small class="text-muted ps-4">({{ conf.original_name }})</small>
+                        {% endif %}
+                    </div>
+                    <div class="btn-group">
+                        {% if conf.name not in status %}
+                        <form method="POST" action="{{ url_for('wireguard.wg_up', conf_name=conf.name) }}">
+                            <button type="submit" class="btn btn-success btn-sm">Activer</button>
+                        </form>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('wireguard.delete_config', conf_name=conf.name) }}" onsubmit="return confirm('Sûr de vouloir supprimer cette configuration ?');">
+                            <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="list-group-item text-muted">Aucune configuration trouvée.</div>
+                {% endfor %}
+            </div>
+            <div class="card-body border-top">
+                <form method="POST" action="{{ url_for('wireguard.upload_config') }}" enctype="multipart/form-data">
+                    <label for="config_file" class="form-label">Ajouter une configuration (.conf)</label>
+                    <div class="input-group">
+                        <input class="form-control" type="file" name="config_file" id="config_file" required accept=".conf">
+                        <button class="btn btn-primary" type="submit">Téléverser</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
