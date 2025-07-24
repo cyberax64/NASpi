@@ -18,7 +18,7 @@ fi
 # === Étape 1: Installation des dépendances système ===
 echo "${GREEN}--> Étape 1/6 : Installation des dépendances système (apt)...${RESET}"
 apt-get update
-apt-get install -y samba mdadm docker.io git rsync ufw gunicorn openresolv wireguard-tools gpsd gpsd-clients lxd 
+apt-get install -y samba mdadm docker.io git rsync ufw gunicorn openresolv wireguard-tools gpsd gpsd-clients 
 apt remove --purge -y exim4 avahi-daemon libavahi-core7 libdaemon0 libnss-mdns rpicam-apps-lite
 systemctl stop dnsmasq
 systemctl disable dnsmasq
@@ -33,8 +33,7 @@ echo 'START_DAEMON="true"' > /etc/default/gpsd
 echo 'USBAUTO="true"' >> /etc/default/gpsd
 echo 'DEVICES="/dev/ttyACM0"' >> /etc/default/gpsd
 echo 'GPSD_OPTIONS="-n"' >> /etc/default/gpsd
-lxd init --auto
-usermod -aG lxd root
+
 
 # === Étape 2: Copie des fichiers de l'application ===
 echo "${GREEN}--> Étape 2/6 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
