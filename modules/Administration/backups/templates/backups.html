@@ -8,7 +8,53 @@
 
 <div class="collapse" id="addTaskCollapse">
     <div class="card card-body mb-4">
-        </div>
+        <form method="POST" action="{{ url_for('backups.index') }}">
+            <div class="mb-3">
+                <label for="name" class="form-label">Nom de la tâche</label>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Type de Source</label>
+                <div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="task_type" id="typeLocal" value="local" checked onchange="toggleSourceFields()">
+                        <label class="form-check-label" for="typeLocal">Dossier Local</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="task_type" id="typeSamba" value="samba" onchange="toggleSourceFields()">
+                        <label class="form-check-label" for="typeSamba">Partage Samba Distant</label>
+                    </div>
+                </div>
+            </div>
+            <div id="sourceLocalFields" class="mb-3">
+                <label for="source_local" class="form-label">Dossier Source Local</label>
+                <input type="text" class="form-control" name="source_local" placeholder="/mnt/raid/photos">
+            </div>
+            <div id="sourceSambaFields" class="row" style="display: none;">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Serveur Distant</label>
+                    <input type="text" class="form-control" name="source_samba_server" placeholder="192.168.1.50">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nom du Partage</label>
+                    <input type="text" class="form-control" name="source_samba_share" placeholder="documents">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nom d'utilisateur</label>
+                    <input type="text" class="form-control" name="source_samba_user">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Mot de passe</label>
+                    <input type="password" class="form-control" name="source_samba_pass">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="destination" class="form-label">Dossier de Destination</label>
+                <input type="text" class="form-control" name="destination" required placeholder="/mnt/backup_usb/photos">
+            </div>
+            <button type="submit" class="btn btn-success mt-3">Créer la Tâche</button>
+        </form>
+    </div>
 </div>
 
 <div class="card">
@@ -19,11 +65,26 @@
             <div class="d-flex w-100 justify-content-between">
                 <h5 class="mb-1">{{ name }}</h5>
                 <div class="btn-group">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#backupModal" data-task-name="{{ name }}">Lancer Maintenant</button>
-                    <form method="POST" action="{{ url_for('backups.delete_task', task_name=name) }}" onsubmit="return confirm('Sûr de vouloir supprimer cette tâche ?');"><button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button></form>
+                    <form method="POST" action="{{ url_for('backups.run_task', task_name=name) }}">
+                        <button type="submit" class="btn btn-primary btn-sm" {% if task.is_running %}disabled{% endif %}>
+                            {% if task.is_running %}<span class="spinner-border spinner-border-sm me-1" role="status"></span>{% endif %}
+                            Lancer
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('backups.delete_task', task_name=name) }}" onsubmit="return confirm('Sûr de vouloir supprimer cette tâche ?');">
+                        <button type="submit" class="btn btn-danger btn-sm" {% if task.is_running %}disabled{% endif %}><i class="bi bi-trash"></i></button>
+                    </form>
                 </div>
             </div>
-            <p class="mb-1">{% if task.type == 'local' %}De <code>{{ task.source }}</code>{% elif task.type == 'samba' %}De <code>//{{ task.source.server }}/{{ task.source.share }}</code>{% endif %} vers <code>{{ task.destination }}</code></p>
+            <p class="mb-1">
+                {% if task.type == 'local' %}De <code>{{ task.source }}</code>{% elif task.type == 'samba' %}De <code>//{{ task.source.server }}/{{ task.source.share }}</code>{% endif %} vers <code>{{ task.destination }}</code>
+            </p>
+            <small>Dernier statut : 
+                {% if task.status == 'Succès' %}<span class="badge text-bg-success">Succès</span>
+                {% elif task.status == 'Échec' %}<span class="badge text-bg-danger">Échec</span>
+                {% elif task.status == 'En cours...' %}<span class="badge text-bg-info">En cours...</span>
+                {% else %}<span class="badge text-bg-secondary">{{ task.status }}</span>{% endif %}
+            </small>
         </div>
         {% else %}
         <div class="list-group-item text-center text-muted">Aucune tâche de sauvegarde configurée.</div>
@@ -31,74 +92,35 @@
     </div>
 </div>
 
-<div class="modal fade" id="backupModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="backupModalTitle">Sauvegarde en cours...</h5></div>
-      <div class="modal-body">
-        <div class="progress mb-3" role="progressbar" style="height: 25px;">
-          <div class="progress-bar progress-bar-striped progress-bar-animated" id="backupProgressBar" style="width: 0%;">0%</div>
-        </div>
-        <pre class="bg-dark text-light p-2 rounded small" style="height: 300px; overflow-y: auto;"><code id="backup-log">En attente du démarrage du processus...</code></pre>
-      </div>
-      <div class="modal-footer">
-        <a href="{{ url_for('backups.index') }}" class="btn btn-secondary d-none" id="close-btn">Terminé</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const backupModalEl = document.getElementById('backupModal');
-    if (backupModalEl) {
-        let socket;
-        backupModalEl.addEventListener('show.bs.modal', event => {
-            const button = event.relatedTarget;
-            const taskName = button.getAttribute('data-task-name');
-            const logContainer = document.getElementById('backup-log');
-            const progressBar = document.getElementById('backupProgressBar');
-            const closeBtn = document.getElementById('close-btn');
-            const modalTitle = document.getElementById('backupModalTitle');
+function toggleSourceFields() {
+    const localFields = document.getElementById('sourceLocalFields');
+    const sambaFields = document.getElementById('sourceSambaFields');
+    const localInput = localFields.querySelector('input');
+    const sambaInputs = sambaFields.querySelectorAll('input');
 
-            modalTitle.textContent = `Sauvegarde de '${taskName}' en cours...`;
-            logContainer.textContent = 'Connexion au serveur...\n';
-            progressBar.style.width = '0%';
-            progressBar.textContent = '0%';
-            progressBar.classList.remove('bg-success');
-            closeBtn.classList.add('d-none');
-            
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/backups');
-
-            socket.on('connect', function() {
-                socket.emit('run_backup_task', {name: taskName});
-            });
-
-            socket.on('backup_log', function(msg) {
-                logContainer.textContent += msg.log;
-                logContainer.scrollTop = logContainer.scrollHeight;
-                if (msg.log.includes('--- TERMINÉE') || msg.log.includes('--- ERREUR')) {
-                    closeBtn.classList.remove('d-none');
-                    progressBar.classList.remove('progress-bar-animated');
-                }
-            });
-
-            socket.on('backup_progress', function(data) {
-                progressBar.style.width = data.percent + '%';
-                progressBar.textContent = data.percent + '%';
-                if (data.percent === 100) {
-                    progressBar.classList.add('bg-success');
-                }
-            });
-        });
-        
-        backupModalEl.addEventListener('hidden.bs.modal', event => {
-            if (socket) {
-                socket.disconnect();
-            }
-        });
+    if (document.getElementById('typeLocal').checked) {
+        localFields.style.display = 'block';
+        localInput.required = true;
+        sambaFields.style.display = 'none';
+        sambaInputs.forEach(el => { el.required = false; el.value = ''; });
+    } else {
+        localFields.style.display = 'none';
+        localInput.required = false;
+        localInput.value = '';
+        sambaFields.style.display = 'flex';
+        sambaInputs.forEach(el => el.required = true);
     }
+}
+// On attend que toute la page soit chargée pour attacher les événements
+document.addEventListener('DOMContentLoaded', function () {
+    const typeLocalRadio = document.getElementById('typeLocal');
+    const typeSambaRadio = document.getElementById('typeSamba');
+    
+    if(typeLocalRadio) typeLocalRadio.addEventListener('change', toggleSourceFields);
+    if(typeSambaRadio) typeSambaRadio.addEventListener('change', toggleSourceFields);
+    
+    toggleSourceFields();
 });
 </script>
 {% endblock %}

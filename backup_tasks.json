@@ -2,8 +2,8 @@
     "gps": {
         "type": "samba",
         "destination": "/mnt/ssd/gps",
-        "status": "Jamais ex\u00e9cut\u00e9e",
-        "is_running": false,
+        "status": "En cours...",
+        "is_running": true,
         "source": {
             "server": "192.168.1.3",
             "share": "elodie/gps",
