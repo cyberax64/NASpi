@@ -3,32 +3,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2">Gestion des Sauvegardes (Rsync)</h1>
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addTaskCollapse">
-        <i class="bi bi-plus-circle me-2"></i>Nouvelle Tâche de Sauvegarde
-    </button>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addTaskCollapse"><i class="bi bi-plus-circle me-2"></i>Nouvelle Tâche</button>
 </div>
 
 <div class="collapse" id="addTaskCollapse">
     <div class="card card-body mb-4">
-        <form method="POST" action="{{ url_for('backups.index') }}">
-            <div class="mb-3">
-                <label for="name" class="form-label">Nom de la tâche</label>
-                <input type="text" class="form-control" name="name" placeholder="ex: Sauvegarde Photos" required>
-            </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="source" class="form-label">Dossier Source</label>
-                    <input type="text" class="form-control" name="source" placeholder="/mnt/raid/photos" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="destination" class="form-label">Dossier de Destination</label>
-                    <input type="text" class="form-control" name="destination" placeholder="/mnt/backup_usb/photos" required>
-                </div>
-            </div>
-            <div class="form-text">La destination sera une copie exacte de la source. Les fichiers supprimés de la source seront aussi supprimés de la destination.</div>
-            <button type="submit" class="btn btn-success mt-3">Créer la Tâche</button>
-        </form>
-    </div>
+        </div>
 </div>
 
 <div class="card">
@@ -39,32 +19,86 @@
             <div class="d-flex w-100 justify-content-between">
                 <h5 class="mb-1">{{ name }}</h5>
                 <div class="btn-group">
-                    <form method="POST" action="{{ url_for('backups.run_task', task_name=name) }}" class="d-inline">
-                        <button type="submit" class="btn btn-primary btn-sm">Lancer Maintenant</button>
-                    </form>
-                    <button class="btn btn-secondary btn-sm" disabled>Planifier</button>
-                    <form method="POST" action="{{ url_for('backups.delete_task', task_name=name) }}" class="d-inline" onsubmit="return confirm('Sûr de vouloir supprimer cette tâche ?');">
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button>
-                    </form>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#backupModal" data-task-name="{{ name }}">Lancer Maintenant</button>
+                    <form method="POST" action="{{ url_for('backups.delete_task', task_name=name) }}" onsubmit="return confirm('Sûr de vouloir supprimer cette tâche ?');"><button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button></form>
                 </div>
             </div>
-            <p class="mb-1">
-                De <code>{{ task.source }}</code> vers <code>{{ task.destination }}</code>
-            </p>
-            <small>Dernier statut : 
-                {% if task.status == 'Succès' %}<span class="text-success">{{ task.status }}</span>
-                {% elif task.status == 'Échec' %}<span class="text-danger">{{ task.status }}</span>
-                {% else %}{{ task.status }}{% endif %}
-            </small>
-            {% if task.log %}
-            <pre class="bg-dark text-light p-2 mt-2 rounded small" style="max-height: 150px; overflow-y: auto;"><code>{{ task.log }}</code></pre>
-            {% endif %}
+            <p class="mb-1">{% if task.type == 'local' %}De <code>{{ task.source }}</code>{% elif task.type == 'samba' %}De <code>//{{ task.source.server }}/{{ task.source.share }}</code>{% endif %} vers <code>{{ task.destination }}</code></p>
         </div>
         {% else %}
-        <div class="list-group-item text-center text-muted">
-            Aucune tâche de sauvegarde configurée.
-        </div>
+        <div class="list-group-item text-center text-muted">Aucune tâche de sauvegarde configurée.</div>
         {% endfor %}
     </div>
 </div>
+
+<div class="modal fade" id="backupModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="backupModalTitle">Sauvegarde en cours...</h5></div>
+      <div class="modal-body">
+        <div class="progress mb-3" role="progressbar" style="height: 25px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" id="backupProgressBar" style="width: 0%;">0%</div>
+        </div>
+        <pre class="bg-dark text-light p-2 rounded small" style="height: 300px; overflow-y: auto;"><code id="backup-log">En attente du démarrage du processus...</code></pre>
+      </div>
+      <div class="modal-footer">
+        <a href="{{ url_for('backups.index') }}" class="btn btn-secondary d-none" id="close-btn">Terminé</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const backupModalEl = document.getElementById('backupModal');
+    if (backupModalEl) {
+        let socket;
+        backupModalEl.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const taskName = button.getAttribute('data-task-name');
+            const logContainer = document.getElementById('backup-log');
+            const progressBar = document.getElementById('backupProgressBar');
+            const closeBtn = document.getElementById('close-btn');
+            const modalTitle = document.getElementById('backupModalTitle');
+
+            modalTitle.textContent = `Sauvegarde de '${taskName}' en cours...`;
+            logContainer.textContent = 'Connexion au serveur...\n';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            progressBar.classList.remove('bg-success');
+            closeBtn.classList.add('d-none');
+            
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/backups');
+
+            socket.on('connect', function() {
+                socket.emit('run_backup_task', {name: taskName});
+            });
+
+            socket.on('backup_log', function(msg) {
+                logContainer.textContent += msg.log;
+                logContainer.scrollTop = logContainer.scrollHeight;
+                if (msg.log.includes('--- TERMINÉE') || msg.log.includes('--- ERREUR')) {
+                    closeBtn.classList.remove('d-none');
+                    progressBar.classList.remove('progress-bar-animated');
+                }
+            });
+
+            socket.on('backup_progress', function(data) {
+                progressBar.style.width = data.percent + '%';
+                progressBar.textContent = data.percent + '%';
+                if (data.percent === 100) {
+                    progressBar.classList.add('bg-success');
+                }
+            });
+        });
+        
+        backupModalEl.addEventListener('hidden.bs.modal', event => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
