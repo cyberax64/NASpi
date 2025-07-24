@@ -59,6 +59,11 @@ ufw allow ssh
 # Ajoute la règle pour le Samba
 ufw allow samba
 # Active le pare-feu sans demander de confirmation
+# Autorise les requêtes DHCP (attribution d'IP)
+sudo ufw allow in on wlan0 to any port 67 proto udp
+
+# Autorise les requêtes DNS (traduction des noms de domaine)
+sudo ufw allow in on wlan0 to any port 53
 ufw --force enable
 
 # === Étape 6: Création et activation du service systemd ===
