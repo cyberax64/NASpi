@@ -29,6 +29,11 @@ sed -i '/^ *bind interfaces only/d' "$SAMBA_CONF
 sed -i "/\[global\]/a \interfaces = 0.0.0.0" "$SAMBA_CONF"
 echo "console=serial0,115200 console=tty1 root=PARTUUID=35890969-02 rootfstype=ext4 fsck.repair=yes rootwait cfg80211.ieee80211_regdom=FR ipv6.disable=1" > /boot/firmware/cmdline.txt
 
+echo 'START_DAEMON="true"' > /etc/default/gpsd
+echo 'USBAUTO="true"' >> /etc/default/gpsd
+echo 'DEVICES="/dev/ttyACM0"' >> /etc/default/gpsd
+echo 'GPSD_OPTIONS="-n"' >> /etc/default/gpsd
+
 
 # === Étape 2: Copie des fichiers de l'application ===
 echo "${GREEN}--> Étape 2/6 : Copie des fichiers de l'application vers /opt/nas-panel...${RESET}"
